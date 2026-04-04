@@ -111,7 +111,13 @@ function reducer(state,action){
   switch(action.type){
     case "HYDRATE":return{...state,...action.payload};
     case "GO":return{...state,screen:action.screen,detailId:action.id??state.detailId};
-    case "START_GAME":return{...state,screen:"game",current:newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams)};
+    case "START_GAME":{
+      const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams);
+      const templates={...state.templates};
+      const tKey=action.gameKey==="custom"?(action.customName||"Custom Game"):action.gameKey;
+      if(!templates[tKey]) templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories};
+      return{...state,screen:"game",current:g,templates};
+    }
     case "SET_SCORE":{const c={...state.current};c.players=c.players.map((p,pi)=>pi===action.pi?{...p,scores:{...p.scores,[action.cat]:action.val}}:p);return{...state,current:c};}
     case "ADD_CATEGORY":{const c={...state.current};c.categories=[...c.categories,action.cat];c.players=c.players.map(p=>({...p,scores:{...p.scores,[action.cat]:""}}));return{...state,current:c};}
     case "FINISH":{
@@ -125,6 +131,11 @@ function reducer(state,action){
       const updated = state.history.filter(g=>g.id!==action.id);
       if (state.family && sb) { dbSave(state.family, updated).catch(()=>{}); }
       return {...state, history: updated, screen:"history", detailId:null};
+    }
+    case "DELETE_TEMPLATE": {
+      const templates = {...state.templates};
+      delete templates[action.key];
+      return {...state, templates};
     }
     case "SET_FAMILY":return{...state,family:action.family};
     case "SYNC_HISTORY":return{...state,history:action.history};
@@ -150,6 +161,10 @@ function App(){
       setSyncing(false);
     })();
   },[state.family,state.screen]);
+  useEffect(()=>{
+    if(!state.family||!sb||!Object.keys(state.templates).length) return;
+    dbSave(state.family+"_templates", state.templates).catch(()=>{});
+  },[state.templates,state.family]);
   const finishGame=useCallback(async()=>{
     dispatch({type:"FINISH"});
     if(state.family&&sb&&state.current){
@@ -253,6 +268,22 @@ function SetupScreen({state,dispatch}){
   const [teams,setTeams]=useState([{name:"Team 1",members:[]},{name:"Team 2",members:[]},{name:"Team 3",members:[]},{name:"Team 4",members:[]}]);
   const [solo,setSolo]=useState([]);
   const [newName,setNewName]=useState("");
+  const [deleteTarget,setDeleteTarget]=useState(null);
+  const longPressTimer=React.useRef(null);
+  const preventClick=React.useRef(false);
+
+  function handlePointerDown(k){
+    if(BUILT_IN_GAMES[k]) return;
+    preventClick.current=false;
+    longPressTimer.current=setTimeout(()=>{preventClick.current=true;setDeleteTarget(k);},600);
+  }
+  function handlePointerUp(){clearTimeout(longPressTimer.current);}
+  function confirmDelete(){
+    if(!deleteTarget) return;
+    dispatch({type:"DELETE_TEMPLATE",key:deleteTarget});
+    setDeleteTarget(null);
+    if(gameKey===deleteTarget) setGameKey(null);
+  }
 
   const lastPlayed={};
   state.history.forEach(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!lastPlayed[k]) lastPlayed[k]=g.finishedAt||g.startedAt;});
@@ -276,16 +307,29 @@ function SetupScreen({state,dispatch}){
       <TopBar title="New Game" onBack={()=>dispatch({type:"GO",screen:"home"})}/>
       <h3 style={secHead}>Choose Game</h3>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
-        {gameList.map(([k,g])=>(
-          <div key={k} onClick={()=>pickGame(k)} style={{...S.card,background:gameKey===k?C.tomato:C.card,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-            <span style={{fontSize:26}}>{g.emoji}</span>
-            <div style={{flex:1}}>
-              <div style={{fontSize:15,fontWeight:700,fontFamily:"Georgia,serif",color:gameKey===k?C.white:C.ink}}>{g.name}</div>
-              <div style={{fontSize:11,color:gameKey===k?"rgba(255,255,255,0.8)":C.muted,marginTop:2}}>{lastPlayed[k]?`Last played ${new Date(lastPlayed[k]).toLocaleDateString()}`:"Not played yet"}</div>
+        {gameList.map(([k,g])=>{
+          const isBuiltIn=!!BUILT_IN_GAMES[k];
+          return(
+            <div key={k}
+              onClick={()=>{if(!preventClick.current) pickGame(k);}}
+              onPointerDown={()=>handlePointerDown(k)}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onContextMenu={e=>{if(!isBuiltIn) e.preventDefault();}}
+              style={{...S.card,background:gameKey===k?C.tomato:C.card,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,userSelect:"none",WebkitUserSelect:"none"}}>
+              <span style={{fontSize:26}}>{g.emoji}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:15,fontWeight:700,fontFamily:"Georgia,serif",color:gameKey===k?C.white:C.ink}}>{g.name}</div>
+                <div style={{fontSize:11,color:gameKey===k?"rgba(255,255,255,0.8)":C.muted,marginTop:2}}>
+                  {lastPlayed[k]?`Last played ${new Date(lastPlayed[k]).toLocaleDateString()}`:"Not played yet"}
+                  {!isBuiltIn&&<span style={{marginLeft:6,opacity:0.5}}>· hold to delete</span>}
+                </div>
+              </div>
+              {gameKey===k&&<span style={{color:C.white,fontWeight:700}}>✓</span>}
             </div>
-            {gameKey===k&&<span style={{color:C.white,fontWeight:700}}>✓</span>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {gameKey==="custom"&&(
@@ -345,6 +389,32 @@ function SetupScreen({state,dispatch}){
       )}
 
       <Btn full primary disabled={!canStart} onClick={()=>dispatch({type:"START_GAME",gameKey,players:teamMode?teams.slice(0,numTeams).map(t=>t.name):solo,cats:validCats,customName:custName,customEmoji:custEmoji,teamMode,teams:teamMode?teams.slice(0,numTeams):null})}>Start Game →</Btn>
+
+      {deleteTarget&&(()=>{
+        const hasHistory=state.history.some(g=>{const gKey=g.gameKey==="custom"?g.gameName:g.gameKey;return gKey===deleteTarget;});
+        const tgt=allGames[deleteTarget];
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}} onClick={()=>setDeleteTarget(null)}>
+            <div style={{...S.card,padding:24,maxWidth:340,width:"100%"}} onClick={e=>e.stopPropagation()}>
+              <div style={{fontSize:32,textAlign:"center",marginBottom:8}}>{tgt?.emoji||"🎲"}</div>
+              <h3 style={{textAlign:"center",fontFamily:"Georgia,serif",marginBottom:12,fontSize:18}}>Delete "{tgt?.name||deleteTarget}"?</h3>
+              {hasHistory?(
+                <p style={{color:C.tomato,fontSize:13,marginBottom:16,textAlign:"center",fontWeight:700,lineHeight:1.5}}>
+                  ⚠️ This game has play history. Deleting the template won't erase past scores — they'll still count on the leaderboard.
+                </p>
+              ):(
+                <p style={{color:C.muted,fontSize:13,marginBottom:16,textAlign:"center"}}>
+                  This will remove the game from everyone's list.
+                </p>
+              )}
+              <div style={{display:"flex",gap:10}}>
+                <Btn full onClick={()=>setDeleteTarget(null)}>Cancel</Btn>
+                <Btn full onClick={confirmDelete} style={{background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>Delete</Btn>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
