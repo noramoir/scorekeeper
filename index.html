@@ -220,7 +220,7 @@ function HomeScreen({state,dispatch}){
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 function SetupScreen({state,dispatch}){
-  const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎"];
+  const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎","🫘","🐱","🌸","🏟️"];
   const [gameKey,setGameKey]=useState(null);
   const [cats,setCats]=useState([""]);
   const [custName,setCustName]=useState("");
@@ -246,7 +246,7 @@ function SetupScreen({state,dispatch}){
   function addNew(){const n=newName.trim();if(!n) return;setNewName("");if(teamMode){const ti=teams.slice(0,numTeams).reduce((mi,t,i,arr)=>t.members.length<arr[mi].members.length?i:mi,0);setTeams(prev=>prev.map((t,i)=>i===ti?{...t,members:[...t.members,n]}:t));}else{setSolo(p=>p.includes(n)?p:[...p,n]);}}
 
   const activeTeams=teams.slice(0,numTeams).filter(t=>t.members.length>0);
-  const validCats=cats.filter(c=>c.trim());
+  const validCats=cats.map((c,i)=>c.trim()||`Round ${i+1}`);
   const canStart=gameKey&&(teamMode?activeTeams.length>=2:solo.length>=1);
 
   return(
@@ -275,8 +275,8 @@ function SetupScreen({state,dispatch}){
           </div>
           {showPick&&<div style={{display:"flex",flexWrap:"wrap",gap:6,background:C.white,borderRadius:10,padding:10,marginBottom:10,border:`2px solid ${C.ink}`}}>{EMOJI_OPTS.map(e=><button key={e} onClick={()=>{setCustEmoji(e);setShowPick(false);}} style={{fontSize:22,background:custEmoji===e?C.tomato:"transparent",border:"none",borderRadius:6,padding:"4px 6px",cursor:"pointer"}}>{e}</button>)}</div>}
           <h3 style={{...secHead,marginTop:12,marginBottom:8}}>Score Categories</h3>
-          {cats.map((c,i)=><input key={i} style={{...inp,marginBottom:8}} placeholder={`Category ${i+1}`} value={c} onChange={e=>setCats(cats.map((x,j)=>j===i?e.target.value:x))}/>)}
-          <Btn onClick={()=>setCats(c=>[...c,""])}>+ Add Category</Btn>
+          {cats.map((c,i)=><input key={i} style={{...inp,marginBottom:8}} placeholder={`Round ${i+1}`} value={c} onChange={e=>setCats(cats.map((x,j)=>j===i?e.target.value:x))}/>)}
+          <Btn onClick={()=>setCats(c=>[...c,""])}>+ Add Round</Btn>
         </div>
       )}
 
@@ -363,7 +363,7 @@ function GameScreen({state,dispatch,finishGame}){
 
       <button onClick={()=>setDumbMode(d=>!d)}
         style={{width:"100%",marginBottom:16,padding:"14px",fontSize:15,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,cursor:"pointer",background:dumbMode?C.tomato:C.card,color:dumbMode?C.white:C.ink,boxShadow:`3px 3px 0 ${C.ink}`,transition:"all 0.15s"}}>
-        {dumbMode?"🤓 Math Mode":"👆 Clicker Mode"}
+        {dumbMode?"🚪 Exit Clicker Mode":"👆 Clicker Mode"}
       </button>
 
       <div style={{...S.card,overflow:"hidden",padding:0,marginBottom:8}}>
@@ -428,7 +428,6 @@ function LeaderboardScreen({state}){
     {id:"topPlayer",icon:"⭐",label:"Top Player",  sort:(a,b)=>(b.winRate*0.6+(b.games/maxG)*0.4)-(a.winRate*0.6+(a.games/maxG)*0.4),val:p=>`${Math.round((p.winRate*0.6+(p.games/maxG)*0.4)*100)}pts`,sub:"60% win rate + 40% volume"},
     {id:"mostWins", icon:"🏆",label:"Most Wins",   sort:(a,b)=>b.wins-a.wins,      val:p=>`${p.wins%1===0?p.wins:p.wins.toFixed(2)}W`,   sub:"Total wins (fractional for team games)"},
     {id:"topTime",  icon:"🎮",label:"Top Game Time",sort:(a,b)=>b.games-a.games,   val:p=>`${p.games}G`,                                 sub:"Most games played"},
-    {id:"bestRate", icon:"📈",label:"Best Rate",   sort:(a,b)=>b.winRate-a.winRate,val:p=>`${Math.round(p.winRate*100)}%`,               sub:"Wins ÷ games played"},
   ];
   const cur=tabs.find(t=>t.id===tab);
   const sorted=lb.length?[...lb].sort(cur.sort):[];
@@ -456,7 +455,7 @@ function LeaderboardScreen({state}){
           <span style={{fontSize:22,width:28,textAlign:"center"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`}</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:900,fontFamily:"Georgia,serif",fontSize:16}}>{p.name}</div>
-            <div style={{fontSize:11,color:C.muted}}>{p.wins%1===0?p.wins:p.wins.toFixed(2)}W / {p.games}G · Avg {p.avgScore}pts</div>
+            <div style={{fontSize:11,color:C.muted}}>{p.wins%1===0?p.wins:p.wins.toFixed(2)}W / {p.games}G</div>
           </div>
           <div style={{fontWeight:900,color:C.tomato,fontSize:20,fontFamily:"Georgia,serif"}}>{cur.val(p)}</div>
         </div>
@@ -477,9 +476,10 @@ function HistoryScreen({state,dispatch}){
 
 function HistoryCard({game,dispatch}){
   const winner=[...game.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
+  const displayName = game.gameName || (BUILT_IN_GAMES[game.gameKey]?.name) || "Unknown Game";
   return(
     <div onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:game.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
-      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{game.emoji} {game.gameName}</span><span style={{color:C.muted,fontSize:11}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString()}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{game.emoji} {displayName}</span><span style={{color:C.muted,fontSize:11}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString()}</span></div>
       <div style={{marginTop:6,color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {winner?.name} — {calcTotal(winner)} pts</div>
       <div style={{marginTop:4,color:C.muted,fontSize:11}}>{game.players.map(p=>p.name).join(", ")}</div>
     </div>
