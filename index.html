@@ -17,8 +17,8 @@
     // =====================================================
     // STEP 1: REPLACE THESE TWO VALUES WITH YOUR SUPABASE CREDENTIALS
     // =====================================================
-    var SUPABASE_URL  = "https://lijgbsxjatfzewogznwg.supabase.co";
-    var SUPABASE_ANON = "sb_publishable_Rll9McjZsM2fPYoYdXnMAA_j0Y37bHO";
+    var SUPABASE_URL  = "YOUR_SUPABASE_URL_HERE";
+    var SUPABASE_ANON = "YOUR_SUPABASE_ANON_KEY_HERE";
     // =====================================================
   </script>
 
@@ -498,7 +498,10 @@ function HistoryDetail({state,dispatch}) {
 function FamilyScreen({state,dispatch}) {
   const [pw,setPw]=useState("");
   const [loading,setLoading]=useState(false);
+  const [uploading,setUploading]=useState(false);
   const [msg,setMsg]=useState("");
+  const [uploadMsg,setUploadMsg]=useState("");
+
   async function join(){
     if(!pw.trim()) return; setLoading(true); setMsg("");
     const code=pw.trim().toLowerCase().replace(/\s+/g,"-");
@@ -508,7 +511,26 @@ function FamilyScreen({state,dispatch}) {
     dispatch({type:"SET_FAMILY",family:code});
     setLoading(false);
   }
-  function leave(){ dispatch({type:"SET_FAMILY",family:null}); setMsg(""); setPw(""); }
+
+  async function uploadLocal(){
+    if(!state.family||!sb) return;
+    setUploading(true); setUploadMsg("");
+    const localGames=state.history.filter(g=>g.finished);
+    if(!localGames.length){ setUploadMsg("No finished games to upload."); setUploading(false); return; }
+    // Merge: remote games take precedence for same id, add any local-only games
+    const remote=await dbLoad(state.family)||[];
+    const remoteIds=new Set(remote.map(g=>g.id));
+    const toAdd=localGames.filter(g=>!remoteIds.has(g.id));
+    if(!toAdd.length){ setUploadMsg("✅ All your games are already synced — nothing new to upload."); setUploading(false); return; }
+    const merged=[...remote,...toAdd].sort((a,b)=>new Date(b.finishedAt||b.startedAt)-new Date(a.finishedAt||a.startedAt));
+    await dbSave(state.family,merged);
+    dispatch({type:"SYNC_HISTORY",history:merged});
+    setUploadMsg(`✅ Uploaded ${toAdd.length} game${toAdd.length>1?"s":""} to the family space!`);
+    setUploading(false);
+  }
+
+  function leave(){ dispatch({type:"SET_FAMILY",family:null}); setMsg(""); setPw(""); setUploadMsg(""); }
+
   return (
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{color:"#f0c060",marginBottom:8}}>👨‍👩‍👧 Family Space</h2>
@@ -521,6 +543,18 @@ function FamilyScreen({state,dispatch}) {
             <div style={{fontWeight:"bold",fontSize:18,color:"#f0c060",marginBottom:4}}>{state.family}</div>
             <div style={{color:"#aaa",fontSize:13}}>{state.history.length} shared games</div>
           </div>
+
+          {/* Upload local games */}
+          <div style={{background:"#16213e",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontWeight:"bold",marginBottom:6,fontSize:14}}>📤 Upload saved games</div>
+            <p style={{color:"#aaa",fontSize:13,marginBottom:12}}>Have games saved before joining? Upload them so the whole family can see them.</p>
+            <Btn full onClick={uploadLocal} disabled={uploading||!sb}
+              style={{background:"#0f3460",color:"#fff"}}>
+              {uploading?"Uploading…":"⬆️ Upload my saved games to family"}
+            </Btn>
+            {uploadMsg&&<div style={{marginTop:10,fontSize:13,color:"#f0c060"}}>{uploadMsg}</div>}
+          </div>
+
           <div style={{background:"#16213e",borderRadius:12,padding:16,marginBottom:20}}>
             <div style={{fontWeight:"bold",marginBottom:8}}>Share with friends:</div>
             <ol style={{color:"#aaa",fontSize:14,paddingLeft:20,lineHeight:2}}>
