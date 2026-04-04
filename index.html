@@ -125,7 +125,12 @@ function reducer(state,action){
       if(!templates[tKey]) templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories};
       return{...state,screen:"home",current:null,history:[fin,...state.history],templates};
     }
-    case "DELETE_HISTORY":return{...state,history:state.history.filter(g=>g.id!==action.id)};
+    case "DELETE_HISTORY":
+      const updated = state.history.filter(g=>g.id!==action.id);
+      if (state.family && sb) {
+        dbSave(state.family, updated).catch(()=>{});
+      }
+      return {...state, history: updated};
     case "SET_FAMILY":return{...state,family:action.family};
     case "SYNC_HISTORY":return{...state,history:action.history};
     default:return state;
@@ -497,7 +502,12 @@ function HistoryDetail({state,dispatch}){
           <tbody>{game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}><td style={{padding:"8px 12px",color:C.ink,fontWeight:700}}>{cat}</td>{game.players.map(p=><td key={p.name} style={{textAlign:"center",padding:"8px 4px",fontWeight:700}}>{p.scores[cat]||0}</td>)}</tr>)}</tbody>
         </table>
       </div>
-      <Btn full onClick={()=>{dispatch({type:"DELETE_HISTORY",id:game.id});dispatch({type:"GO",screen:"history"});}} style={{marginTop:20,background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>
+      <Btn full onClick={()=>{
+        if(window.confirm("Delete this game? This can't be undone.")) {
+          dispatch({type:"DELETE_HISTORY",id:game.id});
+          dispatch({type:"GO",screen:"history"});
+        }
+      }} style={{marginTop:20,background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>
     </div>
   );
 }
