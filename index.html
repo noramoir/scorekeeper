@@ -175,7 +175,7 @@ function BottomNav({screen,dispatch,state}){
       )}
       {tabs.map(t=>(
         <button key={t.id} onClick={()=>dispatch({type:"GO",screen:t.id})}
-          style={{flex:1,background:"none",border:"none",color:screen===t.id?C.tomato:C.muted,padding:"10px 0 8px",cursor:"pointer",fontSize:10,display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontWeight:screen===t.id?700:400}}>
+          style={{flex:1,background:"none",border:"none",color:screen===t.id?C.tomato:C.muted,padding:"10px 0 8px",cursor:"pointer",fontSize:10,display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontWeight:700}}>
           <span style={{fontSize:20}}>{t.icon}</span>{t.label}
         </button>
       ))}
@@ -191,15 +191,20 @@ function HomeScreen({state,dispatch}){
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Score Keeper</h1>
-      {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.tomato}}>{state.family}</b></p>}
+      {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.card}}>{state.family}</b></p>}
+      <div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center"}}>
+        <div onClick={()=>dispatch({type:"GO",screen:"setup"})} style={{cursor:"pointer"}}>
+          <div style={{fontSize:28,fontWeight:900,fontFamily:"Georgia,serif",color:C.ink}}>+ New Game</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Tap to start playing</div>
+        </div>
+      </div>
       {top&&(
-        <div style={{...S.limeCard,padding:"14px 18px",marginBottom:20,textAlign:"center"}}>
-          <div style={{fontSize:10,color:C.muted,marginBottom:2,letterSpacing:2}}>⭐ TOP PLAYER</div>
-          <div style={{fontSize:24,fontWeight:900,fontFamily:"Georgia,serif",color:C.ink}}>{top.name}</div>
-          <div style={{fontSize:12,color:C.muted}}>{Math.round(top.winRate*100)}% win rate · {top.wins} wins</div>
+        <div style={{background:C.tomato,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`,padding:"14px 18px",marginBottom:20,textAlign:"center"}}>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",marginBottom:2,letterSpacing:2}}>⭐ TOP PLAYER</div>
+          <div style={{fontSize:24,fontWeight:900,fontFamily:"Georgia,serif",color:C.white}}>{top.name}</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.85)"}}>{Math.round(top.winRate*100)}% win rate · {top.wins} wins</div>
         </div>
       )}
-      <Btn full primary onClick={()=>dispatch({type:"GO",screen:"setup"})} style={{marginBottom:12}}>+ New Game</Btn>
       {state.history.length>0&&<>
         <h3 style={{...secHead,marginTop:20}}>Recent Games</h3>
         {state.history.slice(0,3).map(g=><HistoryCard key={g.id} game={g} dispatch={dispatch}/>)}
@@ -536,7 +541,7 @@ function FamilyScreen({state,dispatch}){
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:8}}>👨‍👩‍👧 Family Space</h2>
-      <p style={{color:C.muted,fontSize:13,marginBottom:24}}>Share scores across devices with a shared password.</p>
+      <p style={{color:C.white,fontSize:13,marginBottom:24}}>Share scores across devices with a shared password.</p>
       {!sb&&<div style={{...S.limeCard,padding:14,marginBottom:20,fontSize:13,color:C.muted}}>⚠️ Supabase not configured. Add your credentials to enable sync.</div>}
       {state.family?(
         <div>
