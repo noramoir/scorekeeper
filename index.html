@@ -110,7 +110,7 @@ function newGame(gameKey,playerNames,cats,customName,customEmoji,teamMode,teams)
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
-const INIT={screen:"home",history:[],templates:{},current:null,family:null,selectedGame:null};
+const INIT={screen:"home",history:[],templates:{},current:null,family:null,detailId:null,selectedGame:null};
 function reducer(state,action){
   switch(action.type){
     case "HYDRATE":return{...state,...action.payload};
@@ -231,7 +231,7 @@ function HomeScreen({state,dispatch}){
         {state.history.slice(0,3).map(g=>{
           const winner=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
           return(
-            <div key={g.id} onClick={()=>dispatch({type:"VIEW_GAME",game:g})}
+                          <div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id,game:g})}
               style={{background:C.card,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                 <span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span>
