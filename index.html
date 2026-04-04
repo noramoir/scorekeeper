@@ -133,6 +133,7 @@ function reducer(state,action){
       return {...state, history: updated};
     case "SET_FAMILY":return{...state,family:action.family};
     case "SYNC_HISTORY":return{...state,history:action.history};
+    case "SYNC_TEMPLATES":return{...state,templates:{...state.templates,...action.templates}};
     default:return state;
   }
 }
@@ -145,14 +146,30 @@ function App(){
   useEffect(()=>{localSave({history:state.history,templates:state.templates,family:state.family,current:state.current});},[state.history,state.templates,state.family,state.current]);
   useEffect(()=>{
     if(!state.family||!sb) return;
-    (async()=>{setSyncing(true);const games=await dbLoad(state.family);if(games) dispatch({type:"SYNC_HISTORY",history:games});setSyncing(false);})();
+    (async()=>{
+      setSyncing(true);
+      const games=await dbLoad(state.family);
+      if(games) dispatch({type:"SYNC_HISTORY",history:games});
+      // Load shared templates so custom game names show for all family members
+      const remoteTemplates=await dbLoad(state.family+"_templates");
+      if(remoteTemplates) dispatch({type:"SYNC_TEMPLATES",templates:remoteTemplates});
+      setSyncing(false);
+    })();
   },[state.family,state.screen]);
   const finishGame=useCallback(async()=>{
     dispatch({type:"FINISH"});
     if(state.family&&sb&&state.current){
       const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};
       const existing=await dbLoad(state.family)||[];
-      await dbSave(state.family,[fin,...existing.filter(g=>g.id!==fin.id)]);
+      const merged=[fin,...existing.filter(g=>g.id!==fin.id)];
+      await dbSave(state.family, merged);
+      // Also sync templates so family members can see custom game names
+      const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;
+      const remoteTemplates = (await dbLoad(state.family+"_templates")) || {};
+      if(!remoteTemplates[tKey]){
+        remoteTemplates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories};
+        await dbSave(state.family+"_templates", remoteTemplates);
+      }
     }
   },[state.family,state.current]);
   const screens={home:HomeScreen,setup:SetupScreen,game:GameScreen,history:HistoryScreen,historyDetail:HistoryDetail,leaderboard:LeaderboardScreen,family:FamilyScreen};
@@ -476,10 +493,11 @@ function HistoryScreen({state,dispatch}){
 
 function HistoryCard({game,dispatch}){
   const winner=[...game.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
-  const displayName = game.gameName || (BUILT_IN_GAMES[game.gameKey]?.name) || "Unknown Game";
+  const displayName = game.gameName || game.customName || BUILT_IN_GAMES[game.gameKey]?.name || "Unknown Game";
+  const displayEmoji = game.emoji || BUILT_IN_GAMES[game.gameKey]?.emoji || "🎲";
   return(
     <div onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:game.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
-      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{game.emoji} {displayName}</span><span style={{color:C.muted,fontSize:11}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString()}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{displayEmoji} {displayName}</span><span style={{color:C.muted,fontSize:11}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString()}</span></div>
       <div style={{marginTop:6,color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {winner?.name} — {calcTotal(winner)} pts</div>
       <div style={{marginTop:4,color:C.muted,fontSize:11}}>{game.players.map(p=>p.name).join(", ")}</div>
     </div>
@@ -489,11 +507,12 @@ function HistoryCard({game,dispatch}){
 function HistoryDetail({state,dispatch}){
   const game=state.history.find(g=>g.id===state.detailId);
   if(!game) return null;
-  const totals=game.players.map(calcTotal);
+  const displayName = game.gameName || game.customName || BUILT_IN_GAMES[game.gameKey]?.name || "Unknown Game";
+  const displayEmoji = game.emoji || BUILT_IN_GAMES[game.gameKey]?.emoji || "🎲";
   const sorted=[...game.players].map((p,i)=>({p,t:totals[i]})).sort((a,b)=>b.t-a.t);
   return(
     <div style={{padding:"20px 20px 80px"}}>
-      <TopBar title={`${game.emoji} ${game.gameName}`} onBack={()=>dispatch({type:"GO",screen:"history"})}/>
+      <TopBar title={`${displayEmoji} ${displayName}`} onBack={()=>dispatch({type:"GO",screen:"history"})}/>
       <p style={{color:C.muted,fontSize:12,marginBottom:16}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString("en-GB",{dateStyle:"long"})}</p>
       <div style={{...S.limeCard,padding:16,marginBottom:20}}>{sorted.map(({p,t},ri)=><div key={p.name} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:ri<sorted.length-1?`1px solid ${C.ink}`:"none"}}><span style={{fontWeight:700}}>{ri===0?"🏆 ":`${ri+1}. `}{p.name}</span><span style={{color:C.tomato,fontWeight:900}}>{t} pts</span></div>)}</div>
       <div style={{...S.card,overflow:"hidden",padding:0}}>
