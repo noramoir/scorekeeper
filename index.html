@@ -295,7 +295,7 @@ function WelcomeScreen({state,dispatch}){
     <div style={{padding:"40px 24px",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
       <div style={{textAlign:"center",marginBottom:40}}>
         <div style={{fontSize:56,marginBottom:8}}>🎲</div>
-        <h1 style={{fontSize:32,fontFamily:"Georgia,serif",fontWeight:900,color:C.ink}}>Score Keeper</h1>
+        <h1 style={{fontSize:32,fontFamily:"Georgia,serif",fontWeight:900,color:C.ink}}>Tally</h1>
         <p style={{color:C.white,fontSize:14,marginTop:8}}>Track scores, settle debates.</p>
       </div>
 
@@ -423,7 +423,7 @@ function HomeScreen({state,dispatch}){
   const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:null;
   return(
     <div style={{padding:"20px 20px 80px"}}>
-      <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Score Keeper</h1>
+      <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Tally</h1>
       {myName&&<p style={{textAlign:"center",color:C.white,fontSize:13,marginBottom:4}}>Hey, <b>{myName}</b>!</p>}
       {state.user?.guest&&<p style={{textAlign:"center",color:C.white,fontSize:12,marginBottom:4,opacity:0.7}}>Playing as guest</p>}
       {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.card}}>{state.family}</b></p>}
