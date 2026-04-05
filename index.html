@@ -577,6 +577,31 @@ function FamilyScreen({state,dispatch}){
   const unclaimed={};state.history.forEach(g=>{g.players.forEach(p=>{if(!p.userId){if(!unclaimed[p.name])unclaimed[p.name]={name:p.name,games:[]};unclaimed[p.name].games.push(g)}})});
   const registeredNames=new Set(Object.values(fu).map(u=>u.displayName));
   const claimable=Object.values(unclaimed).filter(u=>!registeredNames.has(u.name));
+
+  // Find duplicate: games where player name matches my display name but has no userId
+  const myDupes=[];
+  if(state.user&&!state.user.guest&&myDname){
+    state.history.forEach(g=>{
+      const hasDupe=g.players.some(p=>p.name===myDname&&!p.userId);
+      const hasMe=g.players.some(p=>p.userId===state.user.userId);
+      if(hasDupe)myDupes.push({game:g,alsoHasMe:hasMe});
+    });
+  }
+
+  async function fixDuplicates(){
+    if(!myDupes.length||!state.user)return;
+    const ids=myDupes.map(d=>d.game.id);
+    const uid=state.user.userId;const dn=myDname;
+    const newHist=state.history.map(g=>{
+      if(!ids.includes(g.id))return g;
+      return{...g,players:g.players.map(p=>{
+        if(p.name===dn&&!p.userId)return{...p,userId:uid};
+        return p;
+      })};
+    });
+    dispatch({type:"SYNC_HISTORY",history:newHist});
+    if(state.family&&sb)await dbSave(state.family,newHist);
+  }
   async function joinFamily(){if(!pw.trim())return;setLoading(true);setMsg("");const code=pw.trim().toLowerCase().replace(/\s+/g,"-");const games=await dbLoad(code);if(games===null)await dbSave(code,[]);dispatch({type:"JOIN_FAMILY",family:code});const remoteFu=(await dbLoad(code+"_users"))||{};if(state.user&&!state.user.guest&&!remoteFu[state.user.userId]){const dn=state.user.displayName||state.user.userId;remoteFu[state.user.userId]={displayName:dn};await dbSave(code+"_users",remoteFu)}dispatch({type:"SET_FAMILY_USERS",familyUsers:remoteFu});if(games)dispatch({type:"SYNC_HISTORY",history:games});setMsg(`✅ Joined "${code}"`);setLoading(false);setPw("")}
   async function doRename(){const n=newDname.trim();if(!n){setNameErr("Name required");return}const other=Object.entries(fu).filter(([uid])=>uid!==state.user.userId).map(([,u])=>u.displayName);if(other.includes(n)){setNameErr("Name already taken");return}setNameErr("");dispatch({type:"RENAME_USER",userId:state.user.userId,newName:n});if(state.family&&sb){const h=state.history.map(g=>({...g,players:g.players.map(p=>p.userId===state.user.userId?{...p,name:n}:p)}));await dbSave(state.family,h);const rfu=(await dbLoad(state.family+"_users"))||{};rfu[state.user.userId]={displayName:n};await dbSave(state.family+"_users",rfu);await dbSaveUser(state.user.userId,{pin:state.user.pin,displayName:n,families:state.user.families||[],createdAt:state.user.createdAt})}setEditName(false)}
   function startClaim(c){setClaimTarget(c);const sel={};c.games.forEach(g=>{sel[g.id]=true});setClaimSel(sel)}
