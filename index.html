@@ -294,7 +294,7 @@ function HomeScreen({state,dispatch}){
 function SetupScreen({state,dispatch}){
   const fu=state.familyUsers||{};
   const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:(state.user?.displayName||null);
-  const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎","🫘","🐱","🌸","🏟️"];
+  const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎","🫘","🐱","🌸","🏟️","🐰","🌈"];
   const[gameKey,setGameKey]=useState(null);const[cats,setCats]=useState([""]);const[custName,setCustName]=useState("");const[custEmoji,setCustEmoji]=useState("🎲");const[showPick,setShowPick]=useState(false);
   const[teamMode,setTeamMode]=useState(false);const[numTeams,setNumTeams]=useState(2);
   const[teams,setTeams]=useState([{name:"Team 1",members:[]},{name:"Team 2",members:[]},{name:"Team 3",members:[]},{name:"Team 4",members:[]}]);
