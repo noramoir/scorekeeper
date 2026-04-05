@@ -6,116 +6,167 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#8C9EFF"/>
-  <title>🎲 Scorekeeper</title>
-
+  <title>🎲 Tally</title>
   <script>
-    var SUPABASE_URL  = "https://lijgbsxjatfzewogznwg.supabase.co";
-    var SUPABASE_ANON = "sb_publishable_Rll9McjZsM2fPYoYdXnMAA_j0Y37bHO";
+    var SUPABASE_URL="https://lijgbsxjatfzewogznwg.supabase.co";
+    var SUPABASE_ANON="sb_publishable_Rll9McjZsM2fPYoYdXnMAA_j0Y37bHO";
   </script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:#8C9EFF;color:#1a1a1a;font-family:'Courier New',monospace;min-height:100vh;}
-    input,button{font-family:'Courier New',monospace;}
-    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-    ::-webkit-scrollbar{width:4px;height:4px;}
-    ::-webkit-scrollbar-track{background:#FCD9BE;}
-    ::-webkit-scrollbar-thumb{background:#F06038;border-radius:2px;}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#8C9EFF;color:#1a1a1a;font-family:'Courier New',monospace;min-height:100vh}
+    input,button{font-family:'Courier New',monospace}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:#FCD9BE}
+    ::-webkit-scrollbar-thumb{background:#F06038;border-radius:2px}
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useReducer, useCallback } = React;
+const{useState,useEffect,useReducer,useCallback,useRef}=React;
 
-// ── Supabase ──────────────────────────────────────────────────────────────────
-let sb = null;
-try { if (SUPABASE_URL !== "YOUR_SUPABASE_URL_HERE") sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch(e) {}
-async function dbLoad(code) { if(!sb) return null; try { const {data}=await sb.from("family_games").select("games").eq("family_code",code).single(); return data?.games||null; } catch { return null; } }
-async function dbSave(code,games) { if(!sb) return; try { await sb.from("family_games").upsert({family_code:code,games,updated_at:new Date().toISOString()},{onConflict:"family_code"}); } catch {} }
+/* ── Supabase ─────────────────────────────────────────── */
+let sb=null;
+try{if(SUPABASE_URL!=="YOUR_SUPABASE_URL_HERE")sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON)}catch(e){}
+async function dbLoad(c){if(!sb)return null;try{const{data}=await sb.from("family_games").select("games").eq("family_code",c).single();return data?.games||null}catch{return null}}
+async function dbSave(c,g){if(!sb)return;try{await sb.from("family_games").upsert({family_code:c,games:g,updated_at:new Date().toISOString()},{onConflict:"family_code"})}catch{}}
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+/* ── Palette & Styles ─────────────────────────────────── */
 const C={bg:"#8C9EFF",card:"#FCD9BE",lime:"#D6F74C",tomato:"#F06038",ink:"#1a1a1a",muted:"#6b5a4e",white:"#ffffff"};
-const S={
-  card:{background:"#FCD9BE",border:"2px solid #1a1a1a",borderRadius:14,boxShadow:"3px 3px 0 #1a1a1a"},
-  limeCard:{background:"#D6F74C",border:"2px solid #1a1a1a",borderRadius:14,boxShadow:"3px 3px 0 #1a1a1a"},
-};
-const secHead={fontSize:11,textTransform:"uppercase",letterSpacing:2,color:"#6b5a4e",marginBottom:10,marginTop:0,fontFamily:"'Courier New',monospace"};
-const inp={width:"100%",background:"#fff",border:"2px solid #1a1a1a",borderRadius:10,color:"#1a1a1a",padding:"12px 14px",fontSize:15,boxSizing:"border-box",display:"block",fontFamily:"'Courier New',monospace"};
+const S={card:{background:C.card,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`},limeCard:{background:C.lime,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`}};
+const secHead={fontSize:11,textTransform:"uppercase",letterSpacing:2,color:C.muted,marginBottom:10,fontFamily:"'Courier New',monospace"};
+const inp={width:"100%",background:"#fff",border:`2px solid ${C.ink}`,borderRadius:10,color:C.ink,padding:"12px 14px",fontSize:15,boxSizing:"border-box",display:"block",fontFamily:"'Courier New',monospace"};
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+/* ── Constants ────────────────────────────────────────── */
 const BUILT_IN_GAMES={
-  catan:   {name:"Catan",   emoji:"🏝️",categories:["Settlements","Cities","Longest Road","Largest Army","Dev Cards","Special VP"]},
+  colourmatch:{name:"Colour Match",emoji:"🌈",scoringType:"independent",maxScore:10,categories:["Score"]},
+  catan:{name:"Catan",emoji:"🏝️",categories:["Settlements","Cities","Longest Road","Largest Army","Dev Cards","Special VP"]},
   wingspan:{name:"Wingspan",emoji:"🐦",categories:["Birds","Bonus Cards","End-of-Round Goals","Eggs","Food on Cards","Tucked Cards"]},
   scrabble:{name:"Scrabble",emoji:"🔡",categories:["Round 1","Round 2","Round 3","Round 4","Round 5","Round 6","Round 7","Round 8","Tile Penalty"]},
-  custom:  {name:"Custom",  emoji:"🎲",categories:[]},
+  custom:{name:"Custom",emoji:"🎲",categories:[]},
 };
-const TEAM_COLORS=[C.tomato,"#3498db","#2ecc71","#f39c12"];
-const TEAM_EMOJIS=["🔴","🔵","🟢","🟡"];
+const TC=[C.tomato,"#3498db","#2ecc71","#f39c12"];
+const TCL=["#f8a898","#aed6f1","#a9dfbf","#fdebd0"];
+const TE=["🔴","🔵","🟢","🟡"];
 
-// ── Storage ───────────────────────────────────────────────────────────────────
-function localLoad(){try{return JSON.parse(localStorage.getItem("bgs_v2")||"null");}catch{return null;}}
-function localSave(s){try{localStorage.setItem("bgs_v2",JSON.stringify(s));}catch{}}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+/* ── Helpers ──────────────────────────────────────────── */
 const calcTotal=p=>p?.scores?Object.values(p.scores).reduce((s,v)=>s+(parseInt(v)||0),0):0;
+const fmtTime=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+function medal(r){return r===1?"🥇":r===2?"🥈":r===3?"🥉":`${r}.`}
+function getRanks(arr,getVal){const r=[];for(let i=0;i<arr.length;i++){if(i===0)r.push(1);else if(Math.abs(getVal(arr[i])-getVal(arr[i-1]))<0.001)r.push(r[i-1]);else r.push(i+1);}return r;}
+
+function playSound(type){try{const c=new(window.AudioContext||window.webkitAudioContext)();const t=c.currentTime;
+if(type==="frog"){
+  // Two quick ribbets
+  [0,0.25].forEach(off=>{const o=c.createOscillator();const g=c.createGain();const lfo=c.createOscillator();const lg=c.createGain();o.connect(g);g.connect(c.destination);lfo.connect(lg);lg.connect(o.frequency);o.frequency.value=180;lfo.frequency.value=30;lg.gain.value=60;g.gain.setValueAtTime(0.4,t+off);g.gain.exponentialRampToValueAtTime(0.01,t+off+0.2);o.start(t+off);o.stop(t+off+0.22);lfo.start(t+off);lfo.stop(t+off+0.22)});
+}else if(type==="cat"){
+  // Meow sweep
+  const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(700,t);o.frequency.linearRampToValueAtTime(500,t+0.15);o.frequency.linearRampToValueAtTime(600,t+0.3);o.frequency.linearRampToValueAtTime(350,t+0.55);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.35,t+0.05);g.gain.setValueAtTime(0.35,t+0.3);g.gain.linearRampToValueAtTime(0,t+0.6);o.start(t);o.stop(t+0.65);
+}else if(type==="bird"){
+  // Seagull screech x2
+  [0,0.4].forEach(off=>{const o=c.createOscillator();const g=c.createGain();const vib=c.createOscillator();const vg=c.createGain();o.connect(g);g.connect(c.destination);vib.connect(vg);vg.connect(o.frequency);o.frequency.setValueAtTime(1800,t+off);o.frequency.linearRampToValueAtTime(1200,t+off+0.3);vib.frequency.value=25;vg.gain.value=120;g.gain.setValueAtTime(0,t+off);g.gain.linearRampToValueAtTime(0.3,t+off+0.03);g.gain.setValueAtTime(0.3,t+off+0.15);g.gain.linearRampToValueAtTime(0,t+off+0.35);o.start(t+off);o.stop(t+off+0.37);vib.start(t+off);vib.stop(t+off+0.37)});
+}else if(type==="dino"){
+  // Dinosaur roar - low growl with distortion
+  const o=c.createOscillator();const o2=c.createOscillator();const g=c.createGain();const g2=c.createGain();const dist=c.createWaveShaper();const curve=new Float32Array(256);for(let i=0;i<256;i++){const x=i*2/256-1;curve[i]=Math.sign(x)*(1-Math.exp(-3*Math.abs(x)))}dist.curve=curve;o.connect(dist);o2.connect(dist);dist.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(90,t);o.frequency.linearRampToValueAtTime(60,t+0.5);o.frequency.linearRampToValueAtTime(45,t+0.8);o2.frequency.setValueAtTime(130,t);o2.frequency.linearRampToValueAtTime(80,t+0.5);o2.frequency.linearRampToValueAtTime(55,t+0.8);o.type="sawtooth";o2.type="square";g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.4,t+0.08);g.gain.setValueAtTime(0.4,t+0.4);g.gain.linearRampToValueAtTime(0,t+0.9);o.start(t);o.stop(t+0.95);o2.start(t);o2.stop(t+0.95);
+}else{
+  const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=800;g.gain.value=0.3;o.start();o.stop(t+0.3);
+}}catch(e){}}
 
 function buildLeaderboard(history){
   const players={};
   history.forEach(game=>{
-    if(!game.finished) return;
+    if(!game.finished||game.scoringType==="independent")return;
     let individuals=game.players;
     if(game.teamMode&&game.teams){
-      const allMembers=game.teams.flatMap(t=>t.members);
-      const hasTeamNames=game.players.some(p=>!allMembers.includes(p.name));
-      if(hasTeamNames){
-        individuals=game.teams.flatMap(team=>{
-          const tp=game.players.find(p=>p.name===team.name);
-          const sz=Math.max(1,team.members.length);
-          return team.members.map(n=>({name:n,team:team.name,scores:tp?Object.fromEntries(Object.entries(tp.scores).map(([k,v])=>[k,String(Math.round((parseInt(v)||0)/sz))])):{}   }));
-        });
+      const allMem=game.teams.flatMap(t=>t.members);
+      if(game.players.some(p=>!allMem.includes(p.name))){
+        individuals=game.teams.flatMap(team=>{const tp=game.players.find(p=>p.name===team.name);const sz=Math.max(1,team.members.length);return team.members.map(n=>({name:n,team:team.name,scores:tp?Object.fromEntries(Object.entries(tp.scores).map(([k,v])=>[k,String(Math.round((parseInt(v)||0)/sz))])):{}  }));});
       }
     }
     const teamTotals={};
-    if(game.teamMode&&game.teams) game.teams.forEach(team=>{const mems=individuals.filter(p=>team.members.includes(p.name));teamTotals[team.name]=mems.reduce((s,p)=>s+calcTotal(p),0);});
-    const maxTotal=game.teamMode&&game.teams?Math.max(...Object.values(teamTotals),0):Math.max(...individuals.map(calcTotal),0);
+    if(game.teamMode&&game.teams)game.teams.forEach(t=>{const ms=individuals.filter(p=>t.members.includes(p.name));teamTotals[t.name]=ms.reduce((s,p)=>s+calcTotal(p),0);});
+    const maxT=game.teamMode&&game.teams?Math.max(...Object.values(teamTotals),0):Math.max(...individuals.map(calcTotal),0);
     individuals.forEach(p=>{
-      if(!players[p.name]) players[p.name]={name:p.name,wins:0,games:0,totalScore:0};
-      const teamSize=game.teamMode&&game.teams?Math.max(1,game.teams.find(t=>t.members.includes(p.name))?.members.length||1):1;
-      const teamName=game.teamMode&&game.teams?game.teams.find(t=>t.members.includes(p.name))?.name:null;
-      const teamTotal=teamName?teamTotals[teamName]:calcTotal(p);
+      if(!players[p.name])players[p.name]={name:p.name,wins:0,games:0,totalScore:0};
+      const tsz=game.teamMode&&game.teams?Math.max(1,game.teams.find(t=>t.members.includes(p.name))?.members.length||1):1;
+      const tn=game.teamMode&&game.teams?game.teams.find(t=>t.members.includes(p.name))?.name:null;
+      const tt=tn?teamTotals[tn]:calcTotal(p);
       players[p.name].games+=1;
-      players[p.name].totalScore+=Math.round(teamTotal/teamSize);
-      if(teamName?teamTotal===maxTotal:calcTotal(p)===maxTotal) players[p.name].wins+=1/teamSize;
+      players[p.name].totalScore+=Math.round(tt/tsz);
+      if(tn?tt===maxT:calcTotal(p)===maxT)players[p.name].wins+=1/tsz;
+    });
+  });
+  // Independent game leaders get +1 win/game each
+  const indGames={};
+  history.forEach(g=>{
+    if(!g.finished||g.scoringType!=="independent")return;
+    const k=g.gameKey==="custom"?g.gameName:g.gameKey;
+    if(!indGames[k])indGames[k]={maxScore:g.maxScore||10,entries:{}};
+    g.players.forEach(p=>{
+      const sc=parseInt(p.scores?.Score)||0;
+      if(!indGames[k].entries[p.name])indGames[k].entries[p.name]={total:0,count:0};
+      indGames[k].entries[p.name].total+=sc;
+      indGames[k].entries[p.name].count+=1;
+    });
+  });
+  Object.values(indGames).forEach(ig=>{
+    let best=-1;const effs={};
+    Object.entries(ig.entries).forEach(([n,{total,count}])=>{const avg=total/count;const eff=avg*Math.min(1,count/10);effs[n]=eff;if(eff>best)best=eff;});
+    if(best<=0)return;
+    Object.entries(effs).forEach(([n,eff])=>{
+      if(Math.abs(eff-best)<0.001){
+        if(!players[n])players[n]={name:n,wins:0,games:0,totalScore:0};
+        players[n].wins+=1;players[n].games+=1;
+      }
     });
   });
   return Object.values(players).map(p=>({...p,wins:Math.round(p.wins*100)/100,winRate:p.games>0?p.wins/p.games:0,avgScore:p.games>0?Math.round(p.totalScore/p.games):0}));
 }
 
-function newGame(gameKey,playerNames,cats,customName,customEmoji,teamMode,teams){
-  const def=BUILT_IN_GAMES[gameKey]||{name:customName,emoji:customEmoji||"🎲",categories:cats};
-  const categories=gameKey==="custom"?cats:def.categories;
-  const emoji=gameKey==="custom"?(customEmoji||"🎲"):def.emoji;
-  const players=teamMode&&teams?teams.flatMap(team=>team.members.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""])),team:team.name}))):playerNames.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""]))}));
-  return{id:Date.now(),gameKey,gameName:gameKey==="custom"?(customName||"Custom Game"):def.name,emoji,categories,players,teamMode:!!teamMode,teams:teamMode?teams:null,startedAt:new Date().toISOString(),finished:false};
+function buildIndependentRankings(history,gameKey){
+  const players={};
+  history.forEach(g=>{
+    if(!g.finished||g.scoringType!=="independent")return;
+    const k=g.gameKey==="custom"?g.gameName:g.gameKey;
+    if(k!==gameKey)return;
+    g.players.forEach(p=>{
+      const sc=parseInt(p.scores?.Score)||0;
+      if(!players[p.name])players[p.name]={name:p.name,total:0,count:0,lastPlayed:null};
+      players[p.name].total+=sc;players[p.name].count+=1;
+      const d=g.finishedAt||g.startedAt;
+      if(!players[p.name].lastPlayed||d>players[p.name].lastPlayed)players[p.name].lastPlayed=d;
+    });
+  });
+  const ms=history.find(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;return k===gameKey&&g.scoringType==="independent"})?.maxScore||10;
+  return Object.values(players).map(p=>({...p,avg:p.count>0?p.total/p.count:0,effective:p.count>0?(p.total/p.count)*Math.min(1,p.count/10):0,maxScore:ms})).sort((a,b)=>b.effective-a.effective);
 }
 
-// ── Reducer ───────────────────────────────────────────────────────────────────
+function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms){
+  const def=BUILT_IN_GAMES[gk]||{name:cn,emoji:ce||"🎲",categories:cats,scoringType:st};
+  const isInd=st==="independent"||def.scoringType==="independent";
+  const categories=isInd?["Score"]:(gk==="custom"?cats:def.categories);
+  const emoji=gk==="custom"?(ce||"🎲"):def.emoji;
+  const maxScore=isInd?(ms||def.maxScore||10):null;
+  const players=tm&&teams?teams.flatMap(team=>team.members.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""])),team:team.name}))):pn.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""]))}));
+  return{id:Date.now(),gameKey:gk,gameName:gk==="custom"?(cn||"Custom Game"):def.name,emoji,categories,players,teamMode:!!tm,teams:tm?teams:null,startedAt:new Date().toISOString(),finished:false,scoringType:isInd?"independent":"standard",maxScore};
+}
+
+/* ── Reducer ──────────────────────────────────────────── */
 const INIT={screen:"home",history:[],templates:{},current:null,family:null,detailId:null};
 function reducer(state,action){
   switch(action.type){
     case "HYDRATE":return{...state,...action.payload};
     case "GO":return{...state,screen:action.screen,detailId:action.id??state.detailId};
     case "START_GAME":{
-      const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams);
+      const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams,action.scoringType,action.maxScore);
       const templates={...state.templates};
       const tKey=action.gameKey==="custom"?(action.customName||"Custom Game"):action.gameKey;
-      if(!templates[tKey]) templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories};
+      if(!templates[tKey])templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories,scoringType:g.scoringType,maxScore:g.maxScore};
       return{...state,screen:"game",current:g,templates};
     }
     case "SET_SCORE":{const c={...state.current};c.players=c.players.map((p,pi)=>pi===action.pi?{...p,scores:{...p.scores,[action.cat]:action.val}}:p);return{...state,current:c};}
@@ -124,19 +175,11 @@ function reducer(state,action){
       const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};
       const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;
       const templates={...state.templates};
-      if(!templates[tKey]) templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories};
+      if(!templates[tKey])templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories,scoringType:fin.scoringType,maxScore:fin.maxScore};
       return{...state,screen:"home",current:null,history:[fin,...state.history],templates};
     }
-    case "DELETE_HISTORY": {
-      const updated = state.history.filter(g=>g.id!==action.id);
-      if (state.family && sb) { dbSave(state.family, updated).catch(()=>{}); }
-      return {...state, history: updated, screen:"history", detailId:null};
-    }
-    case "DELETE_TEMPLATE": {
-      const templates = {...state.templates};
-      delete templates[action.key];
-      return {...state, templates};
-    }
+    case "DELETE_HISTORY":{const u=state.history.filter(g=>g.id!==action.id);if(state.family&&sb)dbSave(state.family,u).catch(()=>{});return{...state,history:u,screen:"history",detailId:null};}
+    case "DELETE_TEMPLATE":{const t={...state.templates};delete t[action.key];return{...state,templates:t};}
     case "SET_FAMILY":return{...state,family:action.family};
     case "SYNC_HISTORY":return{...state,history:action.history};
     case "SYNC_TEMPLATES":return{...state,templates:{...state.templates,...action.templates}};
@@ -144,93 +187,178 @@ function reducer(state,action){
   }
 }
 
-// ── App ───────────────────────────────────────────────────────────────────────
+/* ── App ──────────────────────────────────────────────── */
 function App(){
-  const [state,dispatch]=useReducer(reducer,INIT);
-  const [syncing,setSyncing]=useState(false);
-  useEffect(()=>{const s=localLoad();if(s) dispatch({type:"HYDRATE",payload:s});},[]);
-  useEffect(()=>{localSave({history:state.history,templates:state.templates,family:state.family,current:state.current});},[state.history,state.templates,state.family,state.current]);
+  const[state,dispatch]=useReducer(reducer,INIT);
+  const[syncing,setSyncing]=useState(false);
+  // Timer state (lifted)
+  const[timerSet,setTimerSet]=useState({min:1,sec:0});
+  const[timerRem,setTimerRem]=useState(null);
+  const[timerRun,setTimerRun]=useState(false);
+  const[timerRepeat,setTimerRepeat]=useState(false);
+  const[timerSound,setTimerSound]=useState("beep");
+
+  useEffect(()=>{const s=JSON.parse(localStorage.getItem("bgs_v2")||"null");if(s)dispatch({type:"HYDRATE",payload:s})},[]);
+  useEffect(()=>{localStorage.setItem("bgs_v2",JSON.stringify({history:state.history,templates:state.templates,family:state.family,current:state.current}))},[state.history,state.templates,state.family,state.current]);
   useEffect(()=>{
-    if(!state.family||!sb) return;
-    (async()=>{
-      setSyncing(true);
-      const games=await dbLoad(state.family);
-      if(games) dispatch({type:"SYNC_HISTORY",history:games});
-      const remoteTemplates=await dbLoad(state.family+"_templates");
-      if(remoteTemplates) dispatch({type:"SYNC_TEMPLATES",templates:remoteTemplates});
-      setSyncing(false);
-    })();
+    if(!state.family||!sb)return;
+    (async()=>{setSyncing(true);const g=await dbLoad(state.family);if(g)dispatch({type:"SYNC_HISTORY",history:g});const rt=await dbLoad(state.family+"_templates");if(rt)dispatch({type:"SYNC_TEMPLATES",templates:rt});setSyncing(false)})();
   },[state.family,state.screen]);
+  useEffect(()=>{if(!state.family||!sb||!Object.keys(state.templates).length)return;dbSave(state.family+"_templates",state.templates).catch(()=>{})},[state.templates,state.family]);
+
+  // Timer tick
   useEffect(()=>{
-    if(!state.family||!sb||!Object.keys(state.templates).length) return;
-    dbSave(state.family+"_templates", state.templates).catch(()=>{});
-  },[state.templates,state.family]);
+    if(!timerRun||timerRem===null)return;
+    const id=setInterval(()=>{
+      setTimerRem(prev=>{
+        if(prev<=1){playSound(timerSound);if(timerRepeat){return timerSet.min*60+timerSet.sec}setTimerRun(false);return 0;}
+        return prev-1;
+      });
+    },1000);
+    return()=>clearInterval(id);
+  },[timerRun,timerRepeat,timerSet,timerSound]);
+
   const finishGame=useCallback(async()=>{
     dispatch({type:"FINISH"});
     if(state.family&&sb&&state.current){
       const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};
       const existing=await dbLoad(state.family)||[];
       const merged=[fin,...existing.filter(g=>g.id!==fin.id)];
-      await dbSave(state.family, merged);
+      await dbSave(state.family,merged);
       const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;
-      const remoteTemplates = (await dbLoad(state.family+"_templates")) || {};
-      if(!remoteTemplates[tKey]){
-        remoteTemplates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories};
-        await dbSave(state.family+"_templates", remoteTemplates);
-      }
+      const rt=(await dbLoad(state.family+"_templates"))||{};
+      if(!rt[tKey]){rt[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories,scoringType:fin.scoringType,maxScore:fin.maxScore};await dbSave(state.family+"_templates",rt);}
     }
   },[state.family,state.current]);
-  const screens={home:HomeScreen,setup:SetupScreen,game:GameScreen,history:HistoryScreen,historyDetail:HistoryDetail,leaderboard:LeaderboardScreen,family:FamilyScreen};
+
+  const timerProps={timerSet,setTimerSet,timerRem,setTimerRem,timerRun,setTimerRun,timerRepeat,setTimerRepeat,timerSound,setTimerSound};
+  const screens={home:HomeScreen,setup:SetupScreen,game:GameScreen,history:HistoryScreen,historyDetail:HistoryDetail,leaderboard:LeaderboardScreen,family:FamilyScreen,timer:TimerScreen};
   const Screen=screens[state.screen]||HomeScreen;
   return(
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,color:C.ink,fontFamily:"'Courier New',monospace"}}>
       {syncing&&<div style={{background:C.tomato,color:C.white,textAlign:"center",fontSize:12,padding:"4px 0"}}>Syncing…</div>}
       {!sb&&<div style={{background:C.lime,color:C.muted,textAlign:"center",fontSize:11,padding:"4px 8px",borderBottom:`2px solid ${C.ink}`}}>⚠️ Supabase not configured — family sync disabled</div>}
-      <Screen state={state} dispatch={dispatch} finishGame={finishGame}/>
+      <Screen state={state} dispatch={dispatch} finishGame={finishGame} timerProps={timerProps}/>
+      {state.screen!=="timer"&&timerRem!==null&&timerRem>0&&(
+        <div onClick={()=>dispatch({type:"GO",screen:"timer"})} style={{position:"fixed",bottom:62,right:12,background:timerRun?C.tomato:C.muted,color:C.white,borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:700,cursor:"pointer",zIndex:100,border:`2px solid ${C.ink}`,boxShadow:`2px 2px 0 ${C.ink}`,animation:timerRun?"none":"none"}}>
+          {timerRun?"⏱":"⏸"} {fmtTime(timerRem)}
+        </div>
+      )}
       <BottomNav screen={state.screen} dispatch={dispatch} state={state}/>
     </div>
   );
 }
 
-// ── Bottom Nav ────────────────────────────────────────────────────────────────
+/* ── Bottom Nav ───────────────────────────────────────── */
 function BottomNav({screen,dispatch,state}){
-  const tabs=[{id:"home",label:"Home",icon:"🏠"},{id:"leaderboard",label:"Board",icon:"🏆"},{id:"history",label:"History",icon:"📋"},{id:"family",label:"Family",icon:"👨‍👩‍👧"}];
+  const tabs=[{id:"home",label:"Home",icon:"🏠"},{id:"leaderboard",label:"Board",icon:"🏆"},{id:"timer",label:"Timer",icon:"⏱"},{id:"history",label:"History",icon:"📋"},{id:"family",label:"Family",icon:"👨‍👩‍👧"}];
   return(
     <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.card,borderTop:`3px solid ${C.ink}`,display:"flex"}}>
       {!!state.current&&screen!=="game"&&(
-        <button onClick={()=>dispatch({type:"GO",screen:"game"})}
-          style={{position:"absolute",top:-44,left:"50%",transform:"translateX(-50%)",background:C.tomato,border:`2px solid ${C.ink}`,color:C.white,borderRadius:20,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxShadow:`3px 3px 0 ${C.ink}`}}>
-          ▶ Resume Game
-        </button>
+        <button onClick={()=>dispatch({type:"GO",screen:"game"})} style={{position:"absolute",top:-44,left:"50%",transform:"translateX(-50%)",background:C.tomato,border:`2px solid ${C.ink}`,color:C.white,borderRadius:20,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxShadow:`3px 3px 0 ${C.ink}`}}>▶ Resume Game</button>
       )}
       {tabs.map(t=>(
-        <button key={t.id} onClick={()=>dispatch({type:"GO",screen:t.id})}
-          style={{flex:1,background:"none",border:"none",color:screen===t.id?C.tomato:C.muted,padding:"10px 0 8px",cursor:"pointer",fontSize:10,display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontWeight:700}}>
-          <span style={{fontSize:20}}>{t.icon}</span>{t.label}
+        <button key={t.id} onClick={()=>dispatch({type:"GO",screen:t.id})} style={{flex:1,background:"none",border:"none",color:screen===t.id?C.tomato:C.muted,padding:"10px 0 8px",cursor:"pointer",fontSize:10,display:"flex",flexDirection:"column",alignItems:"center",gap:2,fontWeight:700}}>
+          <span style={{fontSize:18}}>{t.icon}</span>{t.label}
         </button>
       ))}
     </div>
   );
 }
 
-// ── Home ──────────────────────────────────────────────────────────────────────
+/* ── Timer ─────────────────────────────────────────────── */
+function TimerScreen({timerProps}){
+  const{timerSet,setTimerSet,timerRem,setTimerRem,timerRun,setTimerRun,timerRepeat,setTimerRepeat,timerSound,setTimerSound}=timerProps;
+  const SOUNDS=[{id:"beep",emoji:"⏰"},{id:"frog",emoji:"🐸"},{id:"cat",emoji:"🐱"},{id:"bird",emoji:"🦅"},{id:"dino",emoji:"🦖"}];
+  const total=timerSet.min*60+timerSet.sec;
+  const active=timerRem!==null&&timerRem>0;
+  const paused=active&&!timerRun;
+  function start(){setTimerRem(total);setTimerRun(true)}
+  function pause(){setTimerRun(false)}
+  function resume(){setTimerRun(true)}
+  function stop(){setTimerRun(false);setTimerRem(null)}
+  return(
+    <div style={{padding:"20px 20px 80px"}}>
+      <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>⏱ Timer</h2>
+      {!active?(
+        <div>
+          <div style={{...S.card,padding:24,marginBottom:20,textAlign:"center"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginBottom:16}}>
+              <div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:4}}>MIN</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <button onClick={()=>setTimerSet(p=>({...p,min:Math.max(0,p.min-1)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>−</button>
+                  <span style={{fontSize:36,fontWeight:900,fontFamily:"Georgia,serif",width:50,textAlign:"center"}}>{timerSet.min}</span>
+                  <button onClick={()=>setTimerSet(p=>({...p,min:p.min+1}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>+</button>
+                </div>
+              </div>
+              <span style={{fontSize:36,fontWeight:900,marginTop:16}}>:</span>
+              <div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:4}}>SEC</div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <button onClick={()=>setTimerSet(p=>({...p,sec:Math.max(0,p.sec-5)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>−</button>
+                  <span style={{fontSize:36,fontWeight:900,fontFamily:"Georgia,serif",width:50,textAlign:"center"}}>{String(timerSet.sec).padStart(2,'0')}</span>
+                  <button onClick={()=>setTimerSet(p=>({...p,sec:Math.min(55,p.sec+5)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>+</button>
+                </div>
+              </div>
+            </div>
+            <button onClick={()=>setTimerRepeat(r=>!r)} style={{background:timerRepeat?C.lime:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 16px",fontSize:13,cursor:"pointer",fontWeight:700,marginBottom:16}}>🔁 Repeat {timerRepeat?"ON":"OFF"}</button>
+            <div style={{marginBottom:4}}>
+              <div style={{fontSize:11,color:C.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:2}}>Timer Sound</div>
+              <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                {SOUNDS.map(s=>(
+                  <button key={s.id} onClick={()=>{setTimerSound(s.id);playSound(s.id)}} style={{background:timerSound===s.id?C.tomato:C.white,border:`2px solid ${C.ink}`,borderRadius:12,padding:"10px 14px",fontSize:22,cursor:"pointer",color:timerSound===s.id?C.white:C.ink,boxShadow:timerSound===s.id?`2px 2px 0 ${C.ink}`:"none"}}>
+                    {s.emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <Btn full primary disabled={total===0} onClick={start}>▶ Start Timer</Btn>
+        </div>
+      ):(
+        <div style={{textAlign:"center"}}>
+          <div style={{...S.card,padding:32,marginBottom:20}}>
+            <div style={{fontSize:64,fontWeight:900,fontFamily:"Georgia,serif",color:timerRem<=5?C.tomato:C.ink,marginBottom:8}}>{fmtTime(timerRem)}</div>
+            {timerRepeat&&<div style={{fontSize:12,color:C.muted}}>🔁 Repeat ON</div>}
+          </div>
+          <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+            {timerRun
+              ?<button onClick={pause} style={{flex:3,padding:"20px",fontSize:18,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,background:C.lime,color:C.ink,cursor:"pointer",boxShadow:`3px 3px 0 ${C.ink}`}}>⏸ Pause</button>
+              :<button onClick={resume} style={{flex:3,padding:"20px",fontSize:18,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,background:C.lime,color:C.ink,cursor:"pointer",boxShadow:`3px 3px 0 ${C.ink}`}}>▶ Resume</button>
+            }
+            <button onClick={stop} style={{flex:1,padding:"20px",fontSize:14,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,background:"#fde8e8",color:"#c0392b",cursor:"pointer"}}>⏹</button>
+          </div>
+          <button onClick={()=>setTimerRepeat(r=>!r)} style={{marginTop:16,background:timerRepeat?C.lime:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 16px",fontSize:13,cursor:"pointer",fontWeight:700}}>🔁 Repeat {timerRepeat?"ON":"OFF"}</button>
+          <div style={{marginTop:12,display:"flex",gap:8,justifyContent:"center"}}>
+            {SOUNDS.map(s=>(
+              <button key={s.id} onClick={()=>{setTimerSound(s.id);playSound(s.id)}} style={{background:timerSound===s.id?C.tomato:C.white,border:`2px solid ${C.ink}`,borderRadius:12,padding:"8px 12px",fontSize:20,cursor:"pointer",color:timerSound===s.id?C.white:C.ink}}>
+                {s.emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Home ─────────────────────────────────────────────── */
 function HomeScreen({state,dispatch}){
   const lb=buildLeaderboard(state.history);
   const maxG=Math.max(...lb.map(p=>p.games),1);
   const top=[...lb].sort((a,b)=>(b.winRate*0.6+(b.games/maxG)*0.4)-(a.winRate*0.6+(a.games/maxG)*0.4))[0];
   return(
     <div style={{padding:"20px 20px 80px"}}>
-      <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Scorekeeper</h1>
+      <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Tally</h1>
       {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.card}}>{state.family}</b></p>}
-      <div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center"}}>
-        <div onClick={()=>dispatch({type:"GO",screen:"setup"})} style={{cursor:"pointer"}}>
-          <div style={{fontSize:28,fontWeight:900,fontFamily:"Georgia,serif",color:C.ink}}>+ New Game</div>
-          <div style={{fontSize:12,color:C.muted,marginTop:2}}>Tap to start playing</div>
-        </div>
+      <div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center",cursor:"pointer"}} onClick={()=>dispatch({type:"GO",screen:"setup"})}>
+        <div style={{fontSize:28,fontWeight:900,fontFamily:"Georgia,serif",color:C.ink}}>+ New Game</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:2}}>Tap to start playing</div>
       </div>
       {top&&(
         <div style={{background:C.tomato,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`,padding:"14px 18px",marginBottom:20,textAlign:"center"}}>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",marginBottom:2,letterSpacing:2}}>⭐ TOP PLAYER</div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",letterSpacing:2}}>⭐ TOP PLAYER</div>
           <div style={{fontSize:24,fontWeight:900,fontFamily:"Georgia,serif",color:C.white}}>{top.name}</div>
           <div style={{fontSize:12,color:"rgba(255,255,255,0.85)"}}>{Math.round(top.winRate*100)}% win rate · {top.wins} wins</div>
         </div>
@@ -238,65 +366,58 @@ function HomeScreen({state,dispatch}){
       {state.history.length>0&&<>
         <h3 style={{...secHead,marginTop:20}}>Recent Games</h3>
         {state.history.slice(0,3).map(g=>{
-          const winner=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
-          return(
-            <div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})}
-              style={{background:C.card,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span>
-                <span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span>
-              </div>
-              <div style={{color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {winner?.name} — {calcTotal(winner)} pts</div>
+          const w=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
+          return(<div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span>
+              <span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span>
             </div>
-          );
+            <div style={{color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {w?.name} — {calcTotal(w)} pts</div>
+          </div>);
         })}
       </>}
     </div>
   );
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
+/* ── Setup ────────────────────────────────────────────── */
 function SetupScreen({state,dispatch}){
   const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎","🫘","🐱","🌸","🏟️"];
-  const [gameKey,setGameKey]=useState(null);
-  const [cats,setCats]=useState([""]);
-  const [custName,setCustName]=useState("");
-  const [custEmoji,setCustEmoji]=useState("🎲");
-  const [showPick,setShowPick]=useState(false);
-  const [teamMode,setTeamMode]=useState(false);
-  const [numTeams,setNumTeams]=useState(2);
-  const [teams,setTeams]=useState([{name:"Team 1",members:[]},{name:"Team 2",members:[]},{name:"Team 3",members:[]},{name:"Team 4",members:[]}]);
-  const [solo,setSolo]=useState([]);
-  const [newName,setNewName]=useState("");
-  const [deleteTarget,setDeleteTarget]=useState(null);
-  const longPressTimer=React.useRef(null);
-  const preventClick=React.useRef(false);
+  const[gameKey,setGameKey]=useState(null);
+  const[cats,setCats]=useState([""]);
+  const[custName,setCustName]=useState("");
+  const[custEmoji,setCustEmoji]=useState("🎲");
+  const[showPick,setShowPick]=useState(false);
+  const[teamMode,setTeamMode]=useState(false);
+  const[numTeams,setNumTeams]=useState(2);
+  const[teams,setTeams]=useState([{name:"Team 1",members:[]},{name:"Team 2",members:[]},{name:"Team 3",members:[]},{name:"Team 4",members:[]}]);
+  const[solo,setSolo]=useState([]);
+  const[newName,setNewName]=useState("");
+  const[scoringType,setScoringType]=useState("standard");
+  const[maxScoreInput,setMaxScoreInput]=useState("10");
+  const[deleteTarget,setDeleteTarget]=useState(null);
+  const longPressTimer=useRef(null);
+  const preventClick=useRef(false);
 
-  function handlePointerDown(k){
-    if(BUILT_IN_GAMES[k]) return;
-    preventClick.current=false;
-    longPressTimer.current=setTimeout(()=>{preventClick.current=true;setDeleteTarget(k);},600);
-  }
-  function handlePointerUp(){clearTimeout(longPressTimer.current);}
-  function confirmDelete(){
-    if(!deleteTarget) return;
-    dispatch({type:"DELETE_TEMPLATE",key:deleteTarget});
-    setDeleteTarget(null);
-    if(gameKey===deleteTarget) setGameKey(null);
-  }
+  function handlePointerDown(k){if(BUILT_IN_GAMES[k])return;preventClick.current=false;longPressTimer.current=setTimeout(()=>{preventClick.current=true;setDeleteTarget(k)},600)}
+  function handlePointerUp(){clearTimeout(longPressTimer.current)}
+  function confirmDelete(){if(!deleteTarget)return;dispatch({type:"DELETE_TEMPLATE",key:deleteTarget});setDeleteTarget(null);if(gameKey===deleteTarget)setGameKey(null)}
 
   const lastPlayed={};
-  state.history.forEach(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!lastPlayed[k]) lastPlayed[k]=g.finishedAt||g.startedAt;});
+  state.history.forEach(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!lastPlayed[k])lastPlayed[k]=g.finishedAt||g.startedAt;});
   const allGames={...BUILT_IN_GAMES};
-  Object.entries(state.templates||{}).forEach(([k,t])=>{allGames[k]={...t,name:t.name||t.gameName||k};});
-  const gameList=Object.entries(allGames).sort(([ka],[kb])=>{const ta=lastPlayed[ka]||null,tb=lastPlayed[kb]||null;if(ta&&tb) return new Date(tb)-new Date(ta);if(ta) return -1;if(tb) return 1;return 0;});
+  Object.entries(state.templates||{}).forEach(([k,t])=>{allGames[k]={...t,name:t.name||t.gameName||k}});
+  const gameList=Object.entries(allGames).sort(([ka],[kb])=>{const ta=lastPlayed[ka]||null,tb=lastPlayed[kb]||null;if(ta&&tb)return new Date(tb)-new Date(ta);if(ta)return -1;if(tb)return 1;return 0;});
   const knownPlayers=[...new Set(state.history.flatMap(g=>g.teams?g.teams.flatMap(t=>t.members):g.players.map(p=>p.name)))];
   const allPool=[...new Set([...knownPlayers,...teams.flatMap(t=>t.members),...solo])];
 
-  function pickGame(k){setGameKey(k);setCats(k!=="custom"&&allGames[k]?.categories?allGames[k].categories:[""]);setCustEmoji(allGames[k]?.emoji||"🎲");}
-  function toggleSolo(n){setSolo(p=>p.includes(n)?p.filter(x=>x!==n):[...p,n]);}
-  function assignTeam(name,ti){setTeams(prev=>prev.map((t,i)=>{if(i===ti) return t.members.includes(name)?{...t,members:t.members.filter(m=>m!==name)}:{...t,members:[...t.members,name]};return{...t,members:t.members.filter(m=>m!==name)};}));}
-  function addNew(){const n=newName.trim();if(!n) return;setNewName("");if(teamMode){const ti=teams.slice(0,numTeams).reduce((mi,t,i,arr)=>t.members.length<arr[mi].members.length?i:mi,0);setTeams(prev=>prev.map((t,i)=>i===ti?{...t,members:[...t.members,n]}:t));}else{setSolo(p=>p.includes(n)?p:[...p,n]);}}
+  const selectedDef=gameKey?allGames[gameKey]:null;
+  const isIndependent=gameKey==="custom"?scoringType==="independent":selectedDef?.scoringType==="independent";
+
+  function pickGame(k){if(preventClick.current)return;setGameKey(k);const def=allGames[k];setCats(k!=="custom"&&def?.categories&&def.scoringType!=="independent"?def.categories:[""]);setCustEmoji(def?.emoji||"🎲");if(k!=="custom"&&def?.scoringType)setScoringType(def.scoringType);if(k!=="custom"&&def?.maxScore)setMaxScoreInput(String(def.maxScore))}
+  function toggleSolo(n){setSolo(p=>p.includes(n)?p.filter(x=>x!==n):[...p,n])}
+  function assignTeam(name,ti){setTeams(prev=>prev.map((t,i)=>{if(i===ti)return t.members.includes(name)?{...t,members:t.members.filter(m=>m!==name)}:{...t,members:[...t.members,name]};return{...t,members:t.members.filter(m=>m!==name)}}))}
+  function addNew(){const n=newName.trim();if(!n)return;setNewName("");if(teamMode){const ti=teams.slice(0,numTeams).reduce((mi,t,i,arr)=>t.members.length<arr[mi].members.length?i:mi,0);setTeams(prev=>prev.map((t,i)=>i===ti?{...t,members:[...t.members,n]}:t))}else{setSolo(p=>p.includes(n)?p:[...p,n])}}
 
   const activeTeams=teams.slice(0,numTeams).filter(t=>t.members.length>0);
   const validCats=cats.map((c,i)=>c.trim()||`Round ${i+1}`);
@@ -307,29 +428,20 @@ function SetupScreen({state,dispatch}){
       <TopBar title="New Game" onBack={()=>dispatch({type:"GO",screen:"home"})}/>
       <h3 style={secHead}>Choose Game</h3>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:24}}>
-        {gameList.map(([k,g])=>{
-          const isBuiltIn=!!BUILT_IN_GAMES[k];
-          return(
-            <div key={k}
-              onClick={()=>{if(!preventClick.current) pickGame(k);}}
-              onPointerDown={()=>handlePointerDown(k)}
-              onPointerUp={handlePointerUp}
-              onPointerLeave={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              onContextMenu={e=>{if(!isBuiltIn) e.preventDefault();}}
-              style={{...S.card,background:gameKey===k?C.tomato:C.card,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,userSelect:"none",WebkitUserSelect:"none"}}>
-              <span style={{fontSize:26}}>{g.emoji}</span>
-              <div style={{flex:1}}>
-                <div style={{fontSize:15,fontWeight:700,fontFamily:"Georgia,serif",color:gameKey===k?C.white:C.ink}}>{g.name}</div>
-                <div style={{fontSize:11,color:gameKey===k?"rgba(255,255,255,0.8)":C.muted,marginTop:2}}>
-                  {lastPlayed[k]?`Last played ${new Date(lastPlayed[k]).toLocaleDateString()}`:"Not played yet"}
-                  {!isBuiltIn&&<span style={{marginLeft:6,opacity:0.5}}>· hold to delete</span>}
-                </div>
+        {gameList.map(([k,g])=>{const isBI=!!BUILT_IN_GAMES[k];return(
+          <div key={k} onClick={()=>pickGame(k)} onPointerDown={()=>handlePointerDown(k)} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} onPointerCancel={handlePointerUp} onContextMenu={e=>{if(!isBI)e.preventDefault()}}
+            style={{...S.card,background:gameKey===k?C.tomato:C.card,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,userSelect:"none",WebkitUserSelect:"none"}}>
+            <span style={{fontSize:26}}>{g.emoji}</span>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:700,fontFamily:"Georgia,serif",color:gameKey===k?C.white:C.ink}}>{g.name}{g.scoringType==="independent"?<span style={{fontSize:11,opacity:0.7,marginLeft:6}}>(scored)</span>:""}</div>
+              <div style={{fontSize:11,color:gameKey===k?"rgba(255,255,255,0.8)":C.muted,marginTop:2}}>
+                {lastPlayed[k]?`Last played ${new Date(lastPlayed[k]).toLocaleDateString()}`:"Not played yet"}
+                {!isBI&&<span style={{marginLeft:6,opacity:0.5}}>· hold to delete</span>}
               </div>
-              {gameKey===k&&<span style={{color:C.white,fontWeight:700}}>✓</span>}
             </div>
-          );
-        })}
+            {gameKey===k&&<span style={{color:C.white,fontWeight:700}}>✓</span>}
+          </div>
+        );})}
       </div>
 
       {gameKey==="custom"&&(
@@ -339,20 +451,38 @@ function SetupScreen({state,dispatch}){
             <button onClick={()=>setShowPick(p=>!p)} style={{fontSize:24,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"10px 12px",cursor:"pointer"}}>{custEmoji}</button>
             <input style={{...inp,flex:1}} placeholder="Game name" value={custName} onChange={e=>setCustName(e.target.value)}/>
           </div>
-          {showPick&&<div style={{display:"flex",flexWrap:"wrap",gap:6,background:C.white,borderRadius:10,padding:10,marginBottom:10,border:`2px solid ${C.ink}`}}>{EMOJI_OPTS.map(e=><button key={e} onClick={()=>{setCustEmoji(e);setShowPick(false);}} style={{fontSize:22,background:custEmoji===e?C.tomato:"transparent",border:"none",borderRadius:6,padding:"4px 6px",cursor:"pointer"}}>{e}</button>)}</div>}
-          <h3 style={{...secHead,marginTop:12,marginBottom:8}}>Score Categories</h3>
-          {cats.map((c,i)=><input key={i} style={{...inp,marginBottom:8}} placeholder={`Round ${i+1}`} value={c} onChange={e=>setCats(cats.map((x,j)=>j===i?e.target.value:x))}/>)}
-          <Btn onClick={()=>setCats(c=>[...c,""])}>+ Add Round</Btn>
+          {showPick&&<div style={{display:"flex",flexWrap:"wrap",gap:6,background:C.white,borderRadius:10,padding:10,marginBottom:10,border:`2px solid ${C.ink}`}}>{EMOJI_OPTS.map(e=><button key={e} onClick={()=>{setCustEmoji(e);setShowPick(false)}} style={{fontSize:22,background:custEmoji===e?C.tomato:"transparent",border:"none",borderRadius:6,padding:"4px 6px",cursor:"pointer"}}>{e}</button>)}</div>}
+
+          <h3 style={{...secHead,marginTop:12,marginBottom:8}}>Scoring Type</h3>
+          <div style={{display:"flex",gap:10,marginBottom:16}}>
+            {[{v:"standard",l:"📊 Standard"},{v:"independent",l:"⭐ Independent"}].map(({v,l})=>(
+              <button key={v} onClick={()=>setScoringType(v)} style={{flex:1,padding:"12px 0",fontSize:13,fontWeight:700,background:scoringType===v?C.tomato:C.white,color:scoringType===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:10,cursor:"pointer"}}>{l}</button>
+            ))}
+          </div>
+
+          {scoringType==="standard"?(
+            <div>
+              <h3 style={{...secHead,marginBottom:8}}>Score Categories</h3>
+              {cats.map((c,i)=><input key={i} style={{...inp,marginBottom:8}} placeholder={`Round ${i+1}`} value={c} onChange={e=>setCats(cats.map((x,j)=>j===i?e.target.value:x))}/>)}
+              <Btn onClick={()=>setCats(c=>[...c,""])}>+ Add Round</Btn>
+            </div>
+          ):(
+            <div>
+              <h3 style={{...secHead,marginBottom:8}}>Max Score</h3>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:14,fontWeight:700}}>Score out of</span>
+                <input type="number" inputMode="numeric" style={{...inp,width:80,textAlign:"center"}} value={maxScoreInput} onChange={e=>setMaxScoreInput(e.target.value)}/>
+              </div>
+              <p style={{color:C.muted,fontSize:11,marginTop:8}}>Each player rates /scores once per game. Leader earns a win on the leaderboard.</p>
+            </div>
+          )}
         </div>
       )}
 
       <h3 style={secHead}>Mode</h3>
       <div style={{display:"flex",gap:10,marginBottom:24}}>
         {[{v:false,l:"👤 Individual"},{v:true,l:"👥 Team Mode"}].map(({v,l})=>(
-          <button key={String(v)} onClick={()=>setTeamMode(v)}
-            style={{flex:1,padding:"14px 0",fontSize:14,fontWeight:700,background:teamMode===v?C.tomato:C.card,color:teamMode===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:12,cursor:"pointer",boxShadow:teamMode===v?`3px 3px 0 ${C.ink}`:"none"}}>
-            {l}
-          </button>
+          <button key={String(v)} onClick={()=>setTeamMode(v)} style={{flex:1,padding:"14px 0",fontSize:14,fontWeight:700,background:teamMode===v?C.tomato:C.card,color:teamMode===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:12,cursor:"pointer",boxShadow:teamMode===v?`3px 3px 0 ${C.ink}`:"none"}}>{l}</button>
         ))}
       </div>
 
@@ -371,42 +501,35 @@ function SetupScreen({state,dispatch}){
           <h3 style={{...secHead,marginBottom:10}}>Team Names</h3>
           {teams.slice(0,numTeams).map((t,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-              <span style={{fontSize:20}}>{TEAM_EMOJIS[i]}</span>
-              <input style={{...inp,flex:1,borderColor:TEAM_COLORS[i]}} value={t.name} onChange={e=>setTeams(prev=>prev.map((x,j)=>j===i?{...x,name:e.target.value}:x))}/>
+              <span style={{fontSize:20}}>{TE[i]}</span>
+              <input style={{...inp,flex:1,borderColor:TC[i]}} value={t.name} onChange={e=>setTeams(prev=>prev.map((x,j)=>j===i?{...x,name:e.target.value}:x))}/>
             </div>
           ))}
           <h3 style={{...secHead,marginTop:20,marginBottom:10}}>Assign Players</h3>
-          {allPool.length===0&&<p style={{color:C.muted,fontSize:13,marginBottom:8}}>Add players below to assign them.</p>}
+          {allPool.length===0&&<p style={{color:C.muted,fontSize:13,marginBottom:8}}>Add players below.</p>}
           {allPool.map(name=>{const ti=teams.slice(0,numTeams).findIndex(t=>t.members.includes(name));return(
             <div key={name} style={{display:"flex",alignItems:"center",gap:8,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"10px 12px",marginBottom:8}}>
               <span style={{flex:1,fontSize:14,fontWeight:700}}>{name}</span>
-              <div style={{display:"flex",gap:6}}>{teams.slice(0,numTeams).map((t,i)=><button key={i} onClick={()=>assignTeam(name,i)} style={{width:34,height:34,borderRadius:8,border:`2px solid ${ti===i?TEAM_COLORS[i]:C.ink}`,background:ti===i?TEAM_COLORS[i]:C.white,color:ti===i?C.white:C.ink,fontSize:16,cursor:"pointer",fontWeight:700}}>{TEAM_EMOJIS[i]}</button>)}</div>
+              <div style={{display:"flex",gap:6}}>{teams.slice(0,numTeams).map((t,i)=><button key={i} onClick={()=>assignTeam(name,i)} style={{width:34,height:34,borderRadius:8,border:`2px solid ${ti===i?TC[i]:C.ink}`,background:ti===i?TC[i]:C.white,color:ti===i?C.white:C.ink,fontSize:16,cursor:"pointer",fontWeight:700}}>{TE[i]}</button>)}</div>
             </div>
-          );})}
+          )})}
           <div style={{display:"flex",gap:8,marginTop:12}}><input style={{...inp,flex:1}} placeholder="Add new player…" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNew()}/><Btn primary onClick={addNew}>Add</Btn></div>
-          <div style={{marginTop:16}}>{teams.slice(0,numTeams).map((t,i)=><div key={i} style={{borderLeft:`4px solid ${TEAM_COLORS[i]}`,paddingLeft:12,marginBottom:8}}><span style={{fontWeight:700,color:TEAM_COLORS[i]}}>{TEAM_EMOJIS[i]} {t.name}</span><span style={{color:C.muted,fontSize:12,marginLeft:8}}>{t.members.length?t.members.join(", "):"Empty"}</span></div>)}</div>
+          <div style={{marginTop:16}}>{teams.slice(0,numTeams).map((t,i)=><div key={i} style={{borderLeft:`4px solid ${TC[i]}`,paddingLeft:12,marginBottom:8}}><span style={{fontWeight:700,color:TC[i]}}>{TE[i]} {t.name}</span><span style={{color:C.muted,fontSize:12,marginLeft:8}}>{t.members.length?t.members.join(", "):"Empty"}</span></div>)}</div>
         </div>
       )}
 
-      <Btn full primary disabled={!canStart} onClick={()=>dispatch({type:"START_GAME",gameKey,players:teamMode?teams.slice(0,numTeams).map(t=>t.name):solo,cats:validCats,customName:custName,customEmoji:custEmoji,teamMode,teams:teamMode?teams.slice(0,numTeams):null})}>Start Game →</Btn>
+      <Btn full primary disabled={!canStart} onClick={()=>dispatch({type:"START_GAME",gameKey,players:teamMode?teams.slice(0,numTeams).map(t=>t.name):solo,cats:validCats,customName:custName,customEmoji:custEmoji,teamMode,teams:teamMode?teams.slice(0,numTeams):null,scoringType:isIndependent?"independent":"standard",maxScore:isIndependent?(parseInt(maxScoreInput)||10):null})}>Start Game →</Btn>
 
       {deleteTarget&&(()=>{
-        const hasHistory=state.history.some(g=>{const gKey=g.gameKey==="custom"?g.gameName:g.gameKey;return gKey===deleteTarget;});
+        const hasHist=state.history.some(g=>{const gk=g.gameKey==="custom"?g.gameName:g.gameKey;return gk===deleteTarget});
         const tgt=allGames[deleteTarget];
         return(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}} onClick={()=>setDeleteTarget(null)}>
             <div style={{...S.card,padding:24,maxWidth:340,width:"100%"}} onClick={e=>e.stopPropagation()}>
               <div style={{fontSize:32,textAlign:"center",marginBottom:8}}>{tgt?.emoji||"🎲"}</div>
               <h3 style={{textAlign:"center",fontFamily:"Georgia,serif",marginBottom:12,fontSize:18}}>Delete "{tgt?.name||deleteTarget}"?</h3>
-              {hasHistory?(
-                <p style={{color:C.tomato,fontSize:13,marginBottom:16,textAlign:"center",fontWeight:700,lineHeight:1.5}}>
-                  ⚠️ This game has play history. Deleting the template won't erase past scores — they'll still count on the leaderboard.
-                </p>
-              ):(
-                <p style={{color:C.muted,fontSize:13,marginBottom:16,textAlign:"center"}}>
-                  This will remove the game from everyone's list.
-                </p>
-              )}
+              {hasHist?<p style={{color:C.tomato,fontSize:13,marginBottom:16,textAlign:"center",fontWeight:700,lineHeight:1.5}}>⚠️ This game has play history. Past scores still count on the leaderboard.</p>
+              :<p style={{color:C.muted,fontSize:13,marginBottom:16,textAlign:"center"}}>This will remove the game from everyone's list.</p>}
               <div style={{display:"flex",gap:10}}>
                 <Btn full onClick={()=>setDeleteTarget(null)}>Cancel</Btn>
                 <Btn full onClick={confirmDelete} style={{background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>Delete</Btn>
@@ -419,278 +542,330 @@ function SetupScreen({state,dispatch}){
   );
 }
 
-// ── Game ──────────────────────────────────────────────────────────────────────
+/* ── Game ──────────────────────────────────────────────── */
 function GameScreen({state,dispatch,finishGame}){
   const game=state.current;
-  const [newCat,setNewCat]=useState("");
-  const [showAdd,setShowAdd]=useState(false);
-  const [dumbMode,setDumbMode]=useState(false);
-  const [dumbPi,setDumbPi]=useState(null);
-  const [dumbCat,setDumbCat]=useState(null);
-  if(!game) return null;
+  const[newCat,setNewCat]=useState("");
+  const[showAdd,setShowAdd]=useState(false);
+  const[dumbMode,setDumbMode]=useState(false);
+  const[catIdx,setCatIdx]=useState(0);
+  if(!game)return null;
+  const isInd=game.scoringType==="independent";
   const playerTotals=game.players.map(calcTotal);
+
+  if(dumbMode) return <ClickerMode game={game} dispatch={dispatch} finishGame={finishGame} catIdx={catIdx} setCatIdx={setCatIdx} onExit={()=>setDumbMode(false)}/>;
+
+  // Standard table view
   const leaderboardRows=game.teamMode&&game.teams
-    ?game.teams.map(team=>{const mems=game.players.filter(p=>team.members.includes(p.name));const total=mems.reduce((s,p)=>s+calcTotal(p),0);return{label:team.name,sub:team.members.join(", "),total};}).sort((a,b)=>b.total-a.total)
+    ?game.teams.map(team=>{const ms=game.players.filter(p=>team.members.includes(p.name));const total=ms.reduce((s,p)=>s+calcTotal(p),0);return{label:team.name,sub:team.members.join(", "),total}}).sort((a,b)=>b.total-a.total)
     :[...game.players].map((p,i)=>({label:p.name,sub:null,total:playerTotals[i]})).sort((a,b)=>b.total-a.total);
-  const maxLeaderTotal=Math.max(...leaderboardRows.map(r=>r.total),1);
+  const maxLT=Math.max(...leaderboardRows.map(r=>r.total),1);
+
   return(
     <div style={{padding:"20px 20px 120px"}}>
       <TopBar title={`${game.emoji} ${game.gameName}`} onBack={()=>dispatch({type:"GO",screen:"home"})}/>
+
+      {isInd&&<div style={{background:C.lime,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 12px",marginBottom:16,fontSize:12,color:C.muted,textAlign:"center"}}>⭐ Independent Scoring — Rate each player out of {game.maxScore}</div>}
+
       <div style={{...S.limeCard,padding:16,marginBottom:16}}>
         <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Live Scores</div>
         {leaderboardRows.map(({label,sub,total},ri)=>{
-          const tc=game.teamMode&&game.teams?TEAM_COLORS[game.teams.findIndex(t=>t.name===label)]:null;
+          const tc=game.teamMode&&game.teams?TC[game.teams.findIndex(t=>t.name===label)]:null;
           return(<div key={label} style={{marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
               <span style={{fontWeight:700}}>{ri===0?"🏆 ":""}<span style={{color:tc||C.ink}}>{label}</span>{sub&&<span style={{fontSize:11,color:C.muted,marginLeft:6}}>({sub})</span>}</span>
-              <span style={{fontWeight:900,color:ri===0?C.tomato:C.ink}}>{total}</span>
+              <span style={{fontWeight:900,color:ri===0?C.tomato:C.ink}}>{isInd?`${total}/${game.maxScore}`:total}</span>
             </div>
             <div style={{height:8,background:"rgba(0,0,0,0.15)",borderRadius:4,overflow:"hidden",border:`1px solid ${C.ink}`}}>
-              <div style={{height:"100%",width:`${(total/maxLeaderTotal)*100}%`,background:tc||(ri===0?C.tomato:C.ink),borderRadius:4,transition:"width 0.3s"}}/>
+              <div style={{height:"100%",width:`${(total/(isInd?game.maxScore:maxLT))*100}%`,background:tc||(ri===0?C.tomato:C.ink),borderRadius:4,transition:"width 0.3s"}}/>
             </div>
           </div>);
         })}
       </div>
 
-      <button onClick={()=>setDumbMode(d=>!d)}
-        style={{width:"100%",marginBottom:16,padding:"14px",fontSize:15,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,cursor:"pointer",background:dumbMode?C.tomato:C.card,color:dumbMode?C.white:C.ink,boxShadow:`3px 3px 0 ${C.ink}`,transition:"all 0.15s"}}>
-        {dumbMode?"🚪 Exit Clicker Mode":"👆 Clicker Mode"}
-      </button>
+      <button onClick={()=>setDumbMode(true)} style={{width:"100%",marginBottom:16,padding:"14px",fontSize:15,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,cursor:"pointer",background:C.card,color:C.ink,boxShadow:`3px 3px 0 ${C.ink}`}}>👆 Clicker Mode</button>
 
       <div style={{...S.card,overflow:"hidden",padding:0,marginBottom:8}}>
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
-            <thead>
-              <tr style={{background:C.ink}}>
-                <th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontWeight:700,fontSize:12,letterSpacing:1}}>CATEGORY</th>
-                {game.players.map(p=><th key={p.name} style={{padding:"10px 8px",fontSize:12,textAlign:"center",minWidth:60,color:C.white}}>{p.name}{game.teamMode&&p.team?<div style={{fontSize:9,opacity:0.7}}>{p.team}</div>:null}</th>)}
-              </tr>
-            </thead>
+            <thead><tr style={{background:C.ink}}>
+              <th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontWeight:700,fontSize:12,letterSpacing:1}}>{isInd?"PLAYER":"CATEGORY"}</th>
+              {isInd?<th style={{padding:"10px 8px",fontSize:12,textAlign:"center",color:C.white}}>Score /{game.maxScore}</th>
+              :game.players.map(p=><th key={p.name} style={{padding:"10px 8px",fontSize:12,textAlign:"center",minWidth:60,color:C.white}}>{p.name}{game.teamMode&&p.team?<div style={{fontSize:9,opacity:0.7}}>{p.team}</div>:null}</th>)}
+            </tr></thead>
             <tbody>
-              {game.categories.map((cat,ci)=>(
+              {isInd?game.players.map((p,pi)=>(
+                <tr key={p.name} style={{background:pi%2===0?C.white:C.card}}>
+                  <td style={{padding:"8px 12px",color:C.ink,fontSize:13,fontWeight:700}}>{p.name}</td>
+                  <td style={{padding:4,textAlign:"center"}}><input type="number" inputMode="numeric" min="0" max={game.maxScore} style={{width:64,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,color:C.ink,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores.Score} onChange={e=>{const v=Math.min(game.maxScore,Math.max(0,parseInt(e.target.value)||0));dispatch({type:"SET_SCORE",pi,cat:"Score",val:String(v)})}}/></td>
+                </tr>
+              )):game.categories.map((cat,ci)=>(
                 <tr key={cat} style={{background:ci%2===0?C.white:C.card}}>
                   <td style={{padding:"8px 12px",color:C.ink,fontSize:13,fontWeight:700}}>{cat}</td>
-                  {game.players.map((p,pi)=>{const isSel=dumbMode&&dumbPi===pi&&dumbCat===cat;return(
+                  {game.players.map((p,pi)=>(
                     <td key={p.name} style={{padding:4,textAlign:"center"}}>
-                      {dumbMode
-                        ?<div onClick={()=>{setDumbPi(pi);setDumbCat(cat);}} style={{width:54,margin:"0 auto",background:isSel?C.tomato:C.white,border:`2px solid ${isSel?C.tomato:C.ink}`,borderRadius:8,color:isSel?C.white:C.ink,textAlign:"center",padding:"8px 4px",fontSize:15,cursor:"pointer",fontWeight:700}}>{p.scores[cat]||0}</div>
-                        :<input type="number" inputMode="numeric" style={{width:54,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,color:C.ink,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores[cat]} onChange={e=>dispatch({type:"SET_SCORE",pi,cat,val:e.target.value})}/>
-                      }
+                      <input type="number" inputMode="numeric" style={{width:54,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,color:C.ink,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores[cat]} onChange={e=>dispatch({type:"SET_SCORE",pi,cat,val:e.target.value})}/>
                     </td>
-                  );})}
+                  ))}
                 </tr>
               ))}
-              <tr style={{background:C.tomato}}>
+              {!isInd&&<tr style={{background:C.tomato}}>
                 <td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>
                 {playerTotals.map((t,i)=><td key={i} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{t}</td>)}
-              </tr>
+              </tr>}
             </tbody>
           </table>
         </div>
       </div>
 
-      {showAdd?(<div style={{marginTop:12,display:"flex",gap:8}}><input style={{...inp,flex:1}} placeholder="Category name" value={newCat} onChange={e=>setNewCat(e.target.value)}/><Btn primary onClick={()=>{if(newCat.trim()){dispatch({type:"ADD_CATEGORY",cat:newCat.trim()});setNewCat("");setShowAdd(false);}}}>Add</Btn></div>):<Btn onClick={()=>setShowAdd(true)} style={{marginTop:12}}>+ Add Row</Btn>}
+      {!isInd&&(showAdd?(<div style={{marginTop:12,display:"flex",gap:8}}><input style={{...inp,flex:1}} placeholder="Category name" value={newCat} onChange={e=>setNewCat(e.target.value)}/><Btn primary onClick={()=>{if(newCat.trim()){dispatch({type:"ADD_CATEGORY",cat:newCat.trim()});setNewCat("");setShowAdd(false)}}}>Add</Btn></div>):<Btn onClick={()=>setShowAdd(true)} style={{marginTop:12}}>+ Add Row</Btn>)}
 
       <div style={{position:"fixed",bottom:56,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,padding:"12px 20px",background:C.card,borderTop:`3px solid ${C.ink}`}}>
-        {dumbMode?(<div>
-          <div style={{textAlign:"center",fontSize:12,color:dumbPi!==null&&dumbCat?C.ink:C.muted,marginBottom:8,fontWeight:700}}>
-            {dumbPi!==null&&dumbCat?<span>{game.players[dumbPi]?.name} · {dumbCat} · <span style={{color:C.tomato}}>{parseInt(game.players[dumbPi]?.scores[dumbCat])||0} pts</span></span>:"Tap a score cell to select it"}
-          </div>
-          <div style={{display:"flex",gap:12}}>
-            {[{delta:-1,bg:"#c0392b",label:"−"},{delta:1,bg:"#27ae60",label:"+"}].map(({delta,bg,label})=>{const active=dumbPi!==null&&dumbCat;return(
-              <button key={label} disabled={!active} onClick={()=>{if(!active) return;const cur=parseInt(game.players[dumbPi]?.scores[dumbCat])||0;dispatch({type:"SET_SCORE",pi:dumbPi,cat:dumbCat,val:String(cur+delta)});}}
-                style={{flex:1,padding:"20px 0",fontSize:40,fontWeight:900,borderRadius:16,border:`2px solid ${C.ink}`,cursor:active?"pointer":"not-allowed",background:active?bg:"#ccc",color:active?C.white:C.muted,boxShadow:active?`3px 3px 0 ${C.ink}`:"none"}}>
-                {label}
-              </button>
-            );})}
-          </div>
-        </div>):<Btn full primary onClick={finishGame}>✅ Finish &amp; Save Game</Btn>}
+        <Btn full primary onClick={finishGame}>✅ Finish &amp; Save Game</Btn>
       </div>
     </div>
   );
 }
 
-// ── Leaderboard ───────────────────────────────────────────────────────────────
+/* ── Clicker Mode ─────────────────────────────────────── */
+function ClickerMode({game,dispatch,finishGame,catIdx,setCatIdx,onExit}){
+  const isInd=game.scoringType==="independent";
+  const cat=game.categories[catIdx]||game.categories[0];
+  const maxVal=isInd?(game.maxScore||10):Infinity;
+
+  function nextCat(){setCatIdx(i=>(i+1)%game.categories.length)}
+  function prevCat(){setCatIdx(i=>(i-1+game.categories.length)%game.categories.length)}
+
+  return(
+    <div style={{padding:"0 0 80px"}}>
+      {/* Exit banner */}
+      <div onClick={onExit} style={{background:C.ink,color:C.white,textAlign:"center",padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer"}}>🚪 Exit Clicker Mode</div>
+
+      {/* Category nav */}
+      {game.categories.length>1&&(
+        <div style={{textAlign:"center",padding:"16px 20px 8px"}}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:6,textTransform:"uppercase",letterSpacing:2}}>Scoring Category</div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
+            <button onClick={prevCat} style={{width:40,height:40,borderRadius:20,border:`2px solid ${C.ink}`,background:C.card,fontSize:18,cursor:"pointer",fontWeight:900}}>◀</button>
+            <div style={{minWidth:120}}>
+              <div style={{fontSize:18,fontWeight:900,fontFamily:"Georgia,serif"}}>{cat}</div>
+              <div style={{fontSize:11,color:C.muted}}>{catIdx+1} of {game.categories.length}</div>
+            </div>
+            <button onClick={nextCat} style={{width:40,height:40,borderRadius:20,border:`2px solid ${C.ink}`,background:C.card,fontSize:18,cursor:"pointer",fontWeight:900}}>▶</button>
+          </div>
+        </div>
+      )}
+
+      {/* Player/Team tiles */}
+      <div style={{display:"grid",gridTemplateColumns:game.players.length===1?"1fr":"1fr 1fr",gap:12,padding:"12px 16px"}}>
+        {game.players.map((p,pi)=>{
+          const ci=game.teamMode&&game.teams?game.teams.findIndex(t=>t.members.includes(p.name)):pi;
+          const color=TC[ci%TC.length];
+          const light=TCL[ci%TCL.length];
+          const score=parseInt(p.scores[cat])||0;
+          return(
+            <div key={p.name} style={{borderRadius:16,overflow:"hidden",border:`2px solid ${C.ink}`,boxShadow:`3px 3px 0 ${C.ink}`}}>
+              {/* 80% Plus zone */}
+              <div style={{background:color,padding:"14px 12px",display:"flex",flexDirection:"column",alignItems:"center",minHeight:140,justifyContent:"center"}}>
+                <div style={{fontSize:12,color:"rgba(255,255,255,0.8)",fontWeight:700,marginBottom:2}}>{p.name}</div>
+                {game.teamMode&&p.team&&<div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginBottom:4}}>{p.team}</div>}
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginBottom:6}}>{cat}</div>
+                <div style={{fontSize:36,fontWeight:900,color:C.white,fontFamily:"Georgia,serif",marginBottom:10}}>{isInd?`${score}/${maxVal}`:score}</div>
+                <button onClick={()=>{if(score<maxVal)dispatch({type:"SET_SCORE",pi,cat,val:String(score+1)})}}
+                  style={{width:56,height:56,borderRadius:28,border:"none",background:"rgba(255,255,255,0.3)",color:C.white,fontSize:32,fontWeight:900,cursor:score>=maxVal?"not-allowed":"pointer",opacity:score>=maxVal?0.4:1}}>+</button>
+              </div>
+              {/* 20% Minus zone */}
+              <div style={{background:light,padding:"10px 12px",display:"flex",justifyContent:"center"}}>
+                <button onClick={()=>{if(score>0)dispatch({type:"SET_SCORE",pi,cat,val:String(score-1)})}}
+                  style={{width:40,height:40,borderRadius:20,border:`2px solid ${C.ink}`,background:C.white,color:C.ink,fontSize:22,fontWeight:900,cursor:score<=0?"not-allowed":"pointer",opacity:score<=0?0.4:1}}>−</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Finish button */}
+      <div style={{padding:"16px 16px",position:"fixed",bottom:56,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.card,borderTop:`3px solid ${C.ink}`}}>
+        <Btn full primary onClick={()=>{onExit();finishGame()}}>✅ Finish &amp; Save Game</Btn>
+      </div>
+    </div>
+  );
+}
+
+/* ── Leaderboard ──────────────────────────────────────── */
 function LeaderboardScreen({state}){
-  const [tab,setTab]=useState("topPlayer");
+  const[tab,setTab]=useState("topPlayer");
+  const[indGame,setIndGame]=useState(null);
   const lb=buildLeaderboard(state.history);
   const maxG=Math.max(...lb.map(p=>p.games),1);
+
+  // Independent games list
+  const indGameKeys={};
+  state.history.forEach(g=>{if(g.finished&&g.scoringType==="independent"){const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!indGameKeys[k])indGameKeys[k]={name:g.gameName,emoji:g.emoji}}});
+  Object.entries(state.templates||{}).forEach(([k,t])=>{if(t.scoringType==="independent"&&!indGameKeys[k])indGameKeys[k]={name:t.name||t.gameName||k,emoji:t.emoji||"⭐"}});
+  const indList=Object.entries(indGameKeys);
+  const activeIndGame=indGame||indList[0]?.[0]||null;
+
   const tabs=[
-    {id:"topPlayer",icon:"⭐",label:"Top Player",  sort:(a,b)=>(b.winRate*0.6+(b.games/maxG)*0.4)-(a.winRate*0.6+(a.games/maxG)*0.4),val:p=>`${Math.round((p.winRate*0.6+(p.games/maxG)*0.4)*100)}pts`,sub:"60% win rate + 40% volume"},
-    {id:"mostWins", icon:"🏆",label:"Most Wins",   sort:(a,b)=>b.wins-a.wins,      val:p=>`${p.wins%1===0?p.wins:p.wins.toFixed(2)}W`,   sub:"Total wins (fractional for team games)"},
-    {id:"topTime",  icon:"🎮",label:"Top Game Time",sort:(a,b)=>b.games-a.games,   val:p=>`${p.games}G`,                                 sub:"Most games played"},
+    {id:"topPlayer",icon:"⭐",label:"Top Player",sort:(a,b)=>(b.winRate*0.6+(b.games/maxG)*0.4)-(a.winRate*0.6+(a.games/maxG)*0.4),val:p=>`${Math.round((p.winRate*0.6+(p.games/maxG)*0.4)*100)}pts`,sub:"60% win rate + 40% volume"},
+    {id:"mostWins",icon:"🏆",label:"Most Wins",sort:(a,b)=>b.wins-a.wins,val:p=>`${p.wins%1===0?p.wins:p.wins.toFixed(2)}W`,sub:"Total wins"},
+    {id:"topTime",icon:"🎮",label:"Most Games",sort:(a,b)=>b.games-a.games,val:p=>`${p.games}G`,sub:"Most games played"},
+    {id:"independent",icon:"⭐",label:"Scored",sort:null,val:null,sub:"Independent scoring games"},
   ];
   const cur=tabs.find(t=>t.id===tab);
-  const sorted=lb.length?[...lb].sort(cur.sort):[];
-  if(!lb.length) return <div style={{padding:"20px 20px 80px"}}><h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>🏆 Leaderboard</h2><p style={{color:C.muted,textAlign:"center",marginTop:60}}>Play some games first!</p></div>;
+
+  if(!lb.length&&!indList.length) return <div style={{padding:"20px 20px 80px"}}><h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>🏆 Leaderboard</h2><p style={{color:C.muted,textAlign:"center",marginTop:60}}>Play some games first!</p></div>;
+
+  // Standard leaderboard with ties
+  const sorted=lb.length&&cur.sort?[...lb].sort(cur.sort):[];
+  const ranks=sorted.length?getRanks(sorted,p=>tab==="topPlayer"?(p.winRate*0.6+(p.games/maxG)*0.4):tab==="mostWins"?p.wins:p.games):[];
+
+  // Independent rankings
+  const indRankings=tab==="independent"&&activeIndGame?buildIndependentRankings(state.history,activeIndGame):[];
+  const indRanks=indRankings.length?getRanks(indRankings,p=>p.effective):[];
+
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>🏆 Leaderboard</h2>
       <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:12,marginBottom:20}}>
         {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flexShrink:0,background:tab===t.id?C.tomato:C.card,border:`2px solid ${C.ink}`,color:tab===t.id?C.white:C.ink,borderRadius:20,padding:"8px 14px",fontSize:12,cursor:"pointer",fontWeight:700,boxShadow:tab===t.id?`2px 2px 0 ${C.ink}`:"none"}}>{t.icon} {t.label}</button>)}
       </div>
-      {sorted.length>=3&&(
-        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:24,height:130}}>
-          {[sorted[1],sorted[0],sorted[2]].map((p,ri)=>{const h=[90,130,75][ri];const medals=["🥈","🥇","🥉"];const bgs=[C.bg,C.lime,C.card];return(
-            <div key={p.name} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
-              <div style={{fontSize:12,color:C.ink,marginBottom:2,textAlign:"center",fontWeight:700}}>{p.name}</div>
-              <div style={{fontSize:12,color:C.tomato,marginBottom:4,fontWeight:900}}>{cur.val(p)}</div>
-              <div style={{width:"100%",height:h,background:bgs[ri],border:`2px solid ${C.ink}`,borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>{medals[ri]}</div>
+
+      {tab!=="independent"&&sorted.length>0&&(<>
+        {/* Podium */}
+        {sorted.length>=3&&(
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:24,height:130}}>
+            {[sorted[1],sorted[0],sorted[2]].map((p,ri)=>{const h=[90,130,75][ri];const pidx=[1,0,2][ri];const bgs=[C.bg,C.lime,C.card];return(
+              <div key={p.name} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+                <div style={{fontSize:12,color:C.ink,marginBottom:2,textAlign:"center",fontWeight:700}}>{p.name}</div>
+                <div style={{fontSize:12,color:C.tomato,marginBottom:4,fontWeight:900}}>{cur.val(p)}</div>
+                <div style={{width:"100%",height:h,background:bgs[ri],border:`2px solid ${C.ink}`,borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>{medal(ranks[pidx])}</div>
+              </div>
+            )})}
+          </div>
+        )}
+        <h3 style={{...secHead,marginBottom:12}}>{cur.sub}</h3>
+        {sorted.map((p,i)=>(
+          <div key={p.name} style={{...S.card,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,background:ranks[i]===1?C.lime:C.card}}>
+            <span style={{fontSize:22,width:28,textAlign:"center"}}>{medal(ranks[i])}</span>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:900,fontFamily:"Georgia,serif",fontSize:16}}>{p.name}</div>
+              <div style={{fontSize:11,color:C.muted}}>{p.wins%1===0?p.wins:p.wins.toFixed(2)}W / {p.games}G</div>
             </div>
-          );})}
+            <div style={{fontWeight:900,color:C.tomato,fontSize:20,fontFamily:"Georgia,serif"}}>{cur.val(p)}</div>
+          </div>
+        ))}
+      </>)}
+
+      {tab==="independent"&&(
+        <div>
+          {indList.length===0?<p style={{color:C.muted,textAlign:"center",marginTop:40}}>No independent scoring games yet.</p>:(
+            <div>
+              <select value={activeIndGame||""} onChange={e=>setIndGame(e.target.value)} style={{...inp,marginBottom:20,fontSize:14}}>
+                {indList.map(([k,{name,emoji}])=><option key={k} value={k}>{emoji} {name}</option>)}
+              </select>
+              {indRankings.length===0?<p style={{color:C.muted,textAlign:"center"}}>No games played yet.</p>:
+                indRankings.map((p,i)=>(
+                  <div key={p.name} style={{...S.card,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,background:indRanks[i]===1?C.lime:C.card}}>
+                    <span style={{fontSize:22,width:28,textAlign:"center"}}>{medal(indRanks[i])}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:900,fontFamily:"Georgia,serif",fontSize:16}}>{p.name}</div>
+                      <div style={{fontSize:11,color:C.muted}}>
+                        {p.count} game{p.count!==1?"s":""} · avg {p.avg.toFixed(1)}/{p.maxScore}
+                        {p.lastPlayed&&<span> · {new Date(p.lastPlayed).toLocaleDateString()}</span>}
+                      </div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:900,color:C.tomato,fontSize:18,fontFamily:"Georgia,serif"}}>{p.effective.toFixed(1)}</div>
+                      <div style={{fontSize:10,color:C.muted}}>effective</div>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+          )}
         </div>
       )}
-      <h3 style={{...secHead,marginBottom:12}}>{cur.sub}</h3>
-      {sorted.map((p,i)=>(
-        <div key={p.name} style={{...S.card,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,background:i===0?C.lime:C.card}}>
-          <span style={{fontSize:22,width:28,textAlign:"center"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`}</span>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:900,fontFamily:"Georgia,serif",fontSize:16}}>{p.name}</div>
-            <div style={{fontSize:11,color:C.muted}}>{p.wins%1===0?p.wins:p.wins.toFixed(2)}W / {p.games}G</div>
-          </div>
-          <div style={{fontWeight:900,color:C.tomato,fontSize:20,fontFamily:"Georgia,serif"}}>{cur.val(p)}</div>
-        </div>
-      ))}
     </div>
   );
 }
 
-// ── History ───────────────────────────────────────────────────────────────────
+/* ── History ──────────────────────────────────────────── */
 function HistoryScreen({state,dispatch}){
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>📋 History</h2>
-      {!state.history.length
-        ? <p style={{color:C.muted,textAlign:"center",marginTop:60}}>No games yet!</p>
-        : state.history.map(g=>{
-            const winner=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
-            return(
-              <div key={g.id}
-                onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})}
-                style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span>
-                  <span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span>
-                </div>
-                <div style={{marginTop:6,color:C.tomato,fontSize:13,fontWeight:700}}>
-                  🏆 {winner?.name} — {calcTotal(winner)} pts
-                </div>
-                <div style={{marginTop:4,color:C.muted,fontSize:11}}>{g.players.map(p=>p.name).join(", ")}</div>
-              </div>
-            );
-          })
-      }
+      {!state.history.length?<p style={{color:C.muted,textAlign:"center",marginTop:60}}>No games yet!</p>
+      :state.history.map(g=>{
+        const w=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
+        return(
+          <div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span>
+              <span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span>
+            </div>
+            <div style={{marginTop:6,color:C.tomato,fontSize:13,fontWeight:700}}>
+              🏆 {w?.name} — {g.scoringType==="independent"?`${calcTotal(w)}/${g.maxScore}`:calcTotal(w)+" pts"}
+            </div>
+            <div style={{marginTop:4,color:C.muted,fontSize:11}}>{g.players.map(p=>p.name).join(", ")}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-// ── History Detail ────────────────────────────────────────────────────────────
 function HistoryDetail({state,dispatch}){
   const game=state.history.find(g=>g.id===state.detailId);
-  if(!game) return(
-    <div style={{padding:"20px 20px 80px"}}>
-      <TopBar title="Game Detail" onBack={()=>dispatch({type:"GO",screen:"history"})}/>
-      <p style={{color:C.muted,textAlign:"center",marginTop:60}}>Game not found.</p>
-    </div>
-  );
-
-  const displayName = game.gameName || BUILT_IN_GAMES[game.gameKey]?.name || "Game";
-  const displayEmoji = game.emoji || BUILT_IN_GAMES[game.gameKey]?.emoji || "🎲";
-  const totals = game.players.map(calcTotal);
-  const sorted = [...game.players].map((p,i)=>({p,t:totals[i]})).sort((a,b)=>b.t-a.t);
-
+  if(!game) return(<div style={{padding:"20px 20px 80px"}}><TopBar title="Game Detail" onBack={()=>dispatch({type:"GO",screen:"history"})}/><p style={{color:C.muted,textAlign:"center",marginTop:60}}>Game not found.</p></div>);
+  const isInd=game.scoringType==="independent";
+  const dn=game.gameName||BUILT_IN_GAMES[game.gameKey]?.name||"Game";
+  const de=game.emoji||BUILT_IN_GAMES[game.gameKey]?.emoji||"🎲";
+  const totals=game.players.map(calcTotal);
+  const sorted=[...game.players].map((p,i)=>({p,t:totals[i]})).sort((a,b)=>b.t-a.t);
   return(
     <div style={{padding:"20px 20px 80px"}}>
-      <TopBar title={`${displayEmoji} ${displayName}`} onBack={()=>dispatch({type:"GO",screen:"history"})}/>
+      <TopBar title={`${de} ${dn}`} onBack={()=>dispatch({type:"GO",screen:"history"})}/>
       <p style={{color:C.muted,fontSize:12,marginBottom:16}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString("en-GB",{dateStyle:"long"})}</p>
-
-      {/* Standings */}
       <div style={{...S.limeCard,padding:16,marginBottom:20}}>
         {sorted.map(({p,t},ri)=>(
           <div key={p.name} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:ri<sorted.length-1?`1px solid ${C.ink}`:"none"}}>
             <span style={{fontWeight:700}}>{ri===0?"🏆 ":`${ri+1}. `}{p.name}</span>
-            <span style={{color:C.tomato,fontWeight:900}}>{t} pts</span>
+            <span style={{color:C.tomato,fontWeight:900}}>{isInd?`${t}/${game.maxScore}`:t+" pts"}</span>
           </div>
         ))}
       </div>
-
-      {/* Score Breakdown Table */}
-      <div style={{...S.card,overflow:"hidden",padding:0,marginBottom:20}}>
+      {!isInd&&<div style={{...S.card,overflow:"hidden",padding:0,marginBottom:20}}>
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
-            <thead>
-              <tr style={{background:C.ink}}>
-                <th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontSize:11}}>CATEGORY</th>
-                {game.players.map(p=><th key={p.name} style={{padding:"10px 8px",color:C.white,fontSize:11,textAlign:"center"}}>{p.name}</th>)}
-              </tr>
-            </thead>
+            <thead><tr style={{background:C.ink}}><th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontSize:11}}>CATEGORY</th>{game.players.map(p=><th key={p.name} style={{padding:"10px 8px",color:C.white,fontSize:11,textAlign:"center"}}>{p.name}</th>)}</tr></thead>
             <tbody>
-              {game.categories.map((cat,ci)=>(
-                <tr key={cat} style={{background:ci%2===0?C.white:C.card}}>
-                  <td style={{padding:"8px 12px",color:C.ink,fontWeight:700}}>{cat}</td>
-                  {game.players.map(p=><td key={p.name} style={{textAlign:"center",padding:"8px 4px",fontWeight:700}}>{p.scores[cat]||0}</td>)}
-                </tr>
-              ))}
-              <tr style={{background:C.tomato}}>
-                <td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>
-                {totals.map((t,i)=><td key={i} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{t}</td>)}
-              </tr>
+              {game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}><td style={{padding:"8px 12px",color:C.ink,fontWeight:700}}>{cat}</td>{game.players.map(p=><td key={p.name} style={{textAlign:"center",padding:"8px 4px",fontWeight:700}}>{p.scores[cat]||0}</td>)}</tr>)}
+              <tr style={{background:C.tomato}}><td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>{totals.map((t,i)=><td key={i} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{t}</td>)}</tr>
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* Delete Button */}
-      <Btn full onClick={()=>{
-        if(window.confirm("Delete this game? This can't be undone.")) {
-          dispatch({type:"DELETE_HISTORY",id:game.id});
-        }
-      }} style={{marginTop:4,background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>
+      </div>}
+      <Btn full onClick={()=>{if(window.confirm("Delete this game? This can't be undone."))dispatch({type:"DELETE_HISTORY",id:game.id})}} style={{marginTop:4,background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>
     </div>
   );
 }
 
-// ── Family ────────────────────────────────────────────────────────────────────
+/* ── Family ───────────────────────────────────────────── */
 function FamilyScreen({state,dispatch}){
-  const [pw,setPw]=useState("");
-  const [loading,setLoading]=useState(false);
-  const [uploading,setUploading]=useState(false);
-  const [msg,setMsg]=useState("");
-  const [uploadMsg,setUploadMsg]=useState("");
-
-  async function join(){
-    if(!pw.trim()) return;setLoading(true);setMsg("");
-    const code=pw.trim().toLowerCase().replace(/\s+/g,"-");
-    const games=await dbLoad(code);
-    if(games===null){await dbSave(code,[]);setMsg(`✅ Created "${code}"! Share this password.`);}
-    else{setMsg(`✅ Joined "${code}" — ${games.length} games found.`);dispatch({type:"SYNC_HISTORY",history:games});}
-    dispatch({type:"SET_FAMILY",family:code});
-    setLoading(false);
-  }
-
-  async function uploadLocal(){
-    if(!state.family||!sb) return;
-    setUploading(true);setUploadMsg("");
-    const local=state.history.filter(g=>g.finished);
-    if(!local.length){setUploadMsg("No finished games to upload.");setUploading(false);return;}
-    const remote=await dbLoad(state.family)||[];
-    const remoteIds=new Set(remote.map(g=>g.id));
-    const toAdd=local.filter(g=>!remoteIds.has(g.id));
-    if(!toAdd.length){setUploadMsg("✅ All games already synced.");setUploading(false);return;}
-    const merged=[...remote,...toAdd].sort((a,b)=>new Date(b.finishedAt||b.startedAt)-new Date(a.finishedAt||a.startedAt));
-    await dbSave(state.family,merged);
-    dispatch({type:"SYNC_HISTORY",history:merged});
-    setUploadMsg(`✅ Uploaded ${toAdd.length} game${toAdd.length>1?"s":""}!`);
-    setUploading(false);
-  }
-
-  function leave(){dispatch({type:"SET_FAMILY",family:null});setMsg("");setPw("");setUploadMsg("");}
-
+  const[pw,setPw]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[uploading,setUploading]=useState(false);
+  const[msg,setMsg]=useState("");
+  const[uploadMsg,setUploadMsg]=useState("");
+  async function join(){if(!pw.trim())return;setLoading(true);setMsg("");const code=pw.trim().toLowerCase().replace(/\s+/g,"-");const games=await dbLoad(code);if(games===null){await dbSave(code,[]);setMsg(`✅ Created "${code}"!`)}else{setMsg(`✅ Joined "${code}" — ${games.length} games found.`);dispatch({type:"SYNC_HISTORY",history:games})}dispatch({type:"SET_FAMILY",family:code});setLoading(false)}
+  async function uploadLocal(){if(!state.family||!sb)return;setUploading(true);setUploadMsg("");const local=state.history.filter(g=>g.finished);if(!local.length){setUploadMsg("No finished games.");setUploading(false);return}const remote=await dbLoad(state.family)||[];const ids=new Set(remote.map(g=>g.id));const toAdd=local.filter(g=>!ids.has(g.id));if(!toAdd.length){setUploadMsg("✅ All synced.");setUploading(false);return}const merged=[...remote,...toAdd].sort((a,b)=>new Date(b.finishedAt||b.startedAt)-new Date(a.finishedAt||a.startedAt));await dbSave(state.family,merged);dispatch({type:"SYNC_HISTORY",history:merged});setUploadMsg(`✅ Uploaded ${toAdd.length} game${toAdd.length>1?"s":""}!`);setUploading(false)}
+  function leave(){dispatch({type:"SET_FAMILY",family:null});setMsg("");setPw("");setUploadMsg("")}
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:8}}>👨‍👩‍👧 Family Space</h2>
       <p style={{color:C.white,fontSize:13,marginBottom:24}}>Share scores across devices with a shared password.</p>
-      {!sb&&<div style={{...S.limeCard,padding:14,marginBottom:20,fontSize:13,color:C.muted}}>⚠️ Supabase not configured. Add your credentials to enable sync.</div>}
+      {!sb&&<div style={{...S.limeCard,padding:14,marginBottom:20,fontSize:13,color:C.muted}}>⚠️ Supabase not configured.</div>}
       {state.family?(
         <div>
           <div style={{...S.limeCard,padding:20,marginBottom:16,textAlign:"center"}}>
@@ -700,11 +875,8 @@ function FamilyScreen({state,dispatch}){
           </div>
           <div style={{...S.card,padding:16,marginBottom:16,background:"#e8f4fd",borderColor:"#3498db"}}>
             <div style={{fontWeight:700,marginBottom:6,fontSize:14}}>📤 Upload saved games</div>
-            <p style={{color:C.muted,fontSize:12,marginBottom:12}}>Have games saved before joining? Upload them so everyone can see them.</p>
-            <button onClick={uploadLocal} disabled={uploading||!sb}
-              style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,borderRadius:12,border:`2px solid ${C.ink}`,cursor:uploading||!sb?"not-allowed":"pointer",background:uploading||!sb?"#ccc":"#3498db",color:C.white,boxShadow:`3px 3px 0 ${C.ink}`}}>
-              {uploading?"Uploading…":"⬆️ Upload my saved games to family"}
-            </button>
+            <p style={{color:C.muted,fontSize:12,marginBottom:12}}>Upload local games so everyone can see them.</p>
+            <button onClick={uploadLocal} disabled={uploading||!sb} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,borderRadius:12,border:`2px solid ${C.ink}`,cursor:uploading||!sb?"not-allowed":"pointer",background:uploading||!sb?"#ccc":"#3498db",color:C.white,boxShadow:`3px 3px 0 ${C.ink}`}}>{uploading?"Uploading…":"⬆️ Upload my games"}</button>
             {uploadMsg&&<div style={{marginTop:10,fontSize:12,color:C.tomato,fontWeight:700}}>{uploadMsg}</div>}
           </div>
           <div style={{...S.card,padding:16,marginBottom:16}}>
@@ -728,9 +900,9 @@ function FamilyScreen({state,dispatch}){
   );
 }
 
-// ── Shared UI ─────────────────────────────────────────────────────────────────
-function TopBar({title,onBack}){return <div style={{display:"flex",alignItems:"center",marginBottom:24,gap:12}}><button onClick={onBack} style={{background:C.card,border:`2px solid ${C.ink}`,color:C.ink,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:18,fontWeight:900,boxShadow:`2px 2px 0 ${C.ink}`}}>←</button><h2 style={{margin:0,fontSize:20,fontFamily:"Georgia,serif",fontWeight:900,color:C.ink}}>{title}</h2></div>;}
-function Btn({children,onClick,full,primary,disabled,style}){return <button onClick={onClick} disabled={disabled} style={{width:full?"100%":"auto",background:primary?C.tomato:C.card,color:disabled?C.muted:primary?C.white:C.ink,border:`2px solid ${disabled?C.muted:C.ink}`,borderRadius:12,padding:"14px 20px",fontSize:15,cursor:disabled?"not-allowed":"pointer",fontWeight:700,boxShadow:disabled?"none":`3px 3px 0 ${C.ink}`,...style}}>{children}</button>;}
+/* ── Shared UI ────────────────────────────────────────── */
+function TopBar({title,onBack}){return<div style={{display:"flex",alignItems:"center",marginBottom:24,gap:12}}><button onClick={onBack} style={{background:C.card,border:`2px solid ${C.ink}`,color:C.ink,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:18,fontWeight:900,boxShadow:`2px 2px 0 ${C.ink}`}}>←</button><h2 style={{margin:0,fontSize:20,fontFamily:"Georgia,serif",fontWeight:900,color:C.ink}}>{title}</h2></div>}
+function Btn({children,onClick,full,primary,disabled,style}){return<button onClick={onClick} disabled={disabled} style={{width:full?"100%":"auto",background:primary?C.tomato:C.card,color:disabled?C.muted:primary?C.white:C.ink,border:`2px solid ${disabled?C.muted:C.ink}`,borderRadius:12,padding:"14px 20px",fontSize:15,cursor:disabled?"not-allowed":"pointer",fontWeight:700,boxShadow:disabled?"none":`3px 3px 0 ${C.ink}`,...style}}>{children}</button>}
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
