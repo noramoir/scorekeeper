@@ -151,6 +151,7 @@ function reducer(state,action){
     case "HYDRATE":{const p=action.payload;return{...state,...p,screen:p.user?"home":"welcome"};}
     case "GO":return{...state,screen:action.screen,detailId:action.id??state.detailId};
     case "SET_USER":return{...state,user:action.user,screen:"family"};
+    case "GUEST":return{...state,user:{guest:true},screen:"home"};
     case "LOGOUT":return{...state,user:null,family:null,familyUsers:{},history:[],templates:{},current:null,screen:"welcome"};
     case "JOIN_FAMILY":{const u={...state.user,families:[...(state.user.families||[]).filter(f=>f!==action.family),action.family]};return{...state,user:u,family:action.family,familyUsers:{},history:[],templates:{}};}
     case "LEAVE_FAMILY":{const fams=(state.user.families||[]).filter(f=>f!==action.family);const u={...state.user,families:fams};const newFam=state.family===action.family?(fams[0]||null):state.family;return{...state,user:u,family:newFam,familyUsers:state.family===action.family?{}:state.familyUsers,history:state.family===action.family?[]:state.history,templates:state.family===action.family?{}:state.templates};}
@@ -217,7 +218,7 @@ function App(){
   // Sync familyUsers to supabase
   useEffect(()=>{if(!state.family||!sb||!Object.keys(state.familyUsers).length)return;dbSave(state.family+"_users",state.familyUsers).catch(()=>{})},[state.familyUsers,state.family]);
   // Sync user record
-  useEffect(()=>{if(!state.user||!sb)return;dbSaveUser(state.user.userId,{pin:state.user.pin,families:state.user.families||[],createdAt:state.user.createdAt}).catch(()=>{})},[state.user]);
+  useEffect(()=>{if(!state.user||state.user.guest||!sb)return;dbSaveUser(state.user.userId,{pin:state.user.pin,families:state.user.families||[],createdAt:state.user.createdAt}).catch(()=>{})},[state.user]);
 
   // Timer tick
   useEffect(()=>{
@@ -302,6 +303,7 @@ function WelcomeScreen({state,dispatch}){
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <Btn full primary onClick={()=>setMode("create")}>Create Account</Btn>
           <Btn full onClick={()=>setMode("login")}>I have an account</Btn>
+          <div onClick={()=>dispatch({type:"GUEST"})} style={{textAlign:"center",color:C.white,fontSize:13,cursor:"pointer",marginTop:8,textDecoration:"underline"}}>Skip — play as guest</div>
         </div>
       ):mode==="create"?(
         <div style={{...S.card,padding:20}}>
@@ -423,6 +425,7 @@ function HomeScreen({state,dispatch}){
     <div style={{padding:"20px 20px 80px"}}>
       <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Score Keeper</h1>
       {myName&&<p style={{textAlign:"center",color:C.white,fontSize:13,marginBottom:4}}>Hey, <b>{myName}</b>!</p>}
+      {state.user?.guest&&<p style={{textAlign:"center",color:C.white,fontSize:12,marginBottom:4,opacity:0.7}}>Playing as guest</p>}
       {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.card}}>{state.family}</b></p>}
       {!state.family&&<div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center",cursor:"pointer"}} onClick={()=>dispatch({type:"GO",screen:"family"})}>
         <div style={{fontSize:14,fontWeight:700,color:C.ink}}>👨‍👩‍👧 Join a Family Space to start playing</div>
@@ -779,7 +782,7 @@ function FamilyScreen({state,dispatch}){
     dispatch({type:"JOIN_FAMILY",family:code});
     // Register self in family users
     const remoteFu=(await dbLoad(code+"_users"))||{};
-    if(state.user&&!remoteFu[state.user.userId]){
+    if(state.user&&!state.user.guest&&!remoteFu[state.user.userId]){
       // Use existing display name from another family, or username
       const dn=myDname||state.user.userId;
       remoteFu[state.user.userId]={displayName:dn};
@@ -828,7 +831,7 @@ function FamilyScreen({state,dispatch}){
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>👨‍👩‍👧 Family</h2>
 
       {/* Profile Card */}
-      {state.user&&(
+      {state.user&&!state.user.guest&&(
         <div style={{...S.card,padding:20,marginBottom:20}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
             <div>
@@ -851,8 +854,18 @@ function FamilyScreen({state,dispatch}){
         </div>
       )}
 
+      {/* Guest prompt */}
+      {state.user?.guest&&(
+        <div style={{...S.limeCard,padding:20,marginBottom:20,textAlign:"center"}}>
+          <div style={{fontSize:32,marginBottom:8}}>👤</div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Playing as Guest</div>
+          <p style={{color:C.muted,fontSize:12,marginBottom:12}}>Create an account to edit your display name, claim games, and sync across devices.</p>
+          <Btn primary onClick={()=>dispatch({type:"LOGOUT"})}>Create Account</Btn>
+        </div>
+      )}
+
       {/* Your Families */}
-      {state.user&&state.user.families?.length>0&&(
+      {state.user&&!state.user.guest&&state.user.families?.length>0&&(
         <div style={{marginBottom:20}}>
           <h3 style={secHead}>Your Families</h3>
           {state.user.families.map(f=>(
@@ -878,7 +891,7 @@ function FamilyScreen({state,dispatch}){
       </div>
 
       {/* Claim Players */}
-      {state.family&&claimable.length>0&&(
+      {state.family&&!state.user?.guest&&claimable.length>0&&(
         <div style={{marginBottom:20}}>
           <h3 style={secHead}>Unclaimed Players</h3>
           <p style={{color:C.muted,fontSize:12,marginBottom:12}}>Tap a name to link their games to your account.</p>
