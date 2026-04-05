@@ -49,7 +49,6 @@ const TE=["🔴","🔵","🟢","🟡"];
 
 /* ═══ Built-in Games ═══ */
 const BUILT_IN_GAMES={
-  colourmatch:{name:"Colour Match",emoji:"🌈",scoringType:"independent",maxScore:50,categories:["Score"]},
   catan:{name:"Catan",emoji:"🏝️",categories:["Settlements","Cities","Longest Road","Largest Army","Dev Cards","Special VP"]},
   wingspan:{name:"Wingspan",emoji:"🐦",categories:["Birds","Bonus Cards","End-of-Round Goals","Eggs","Food on Cards","Tucked Cards"]},
   scrabble:{name:"Scrabble",emoji:"🔡",categories:["Round 1","Round 2","Round 3","Round 4","Round 5","Round 6","Round 7","Round 8","Tile Penalty"]},
@@ -63,22 +62,14 @@ function medal(r){return r===1?"🥇":r===2?"🥈":r===3?"🥉":`${r}.`}
 function getRanks(arr,fn){const r=[];for(let i=0;i<arr.length;i++){if(i===0)r.push(1);else if(Math.abs(fn(arr[i])-fn(arr[i-1]))<0.001)r.push(r[i-1]);else r.push(i+1)}return r}
 function pkey(p){return p.userId||p.name}
 function rname(p,fu){if(p.userId&&fu[p.userId])return fu[p.userId].displayName;return p.name}
-
-function getFrequentPlayers(hist,uid,limit){
-  if(!uid)return[];
-  const ct={};
-  hist.slice(0,15).forEach(g=>{
-    if(!g.players.some(p=>p.userId===uid))return;
-    g.players.forEach(p=>{if(pkey(p)!==uid){const k=rname(p,{});ct[p.name]=(ct[p.name]||0)+1}});
-  });
-  return Object.entries(ct).sort((a,b)=>b[1]-a[1]).slice(0,limit||5).map(([k])=>k);
-}
+function getWinner(players,game){return[...players].sort((a,b)=>game?.lowWins?(calcTotal(a)-calcTotal(b)):(calcTotal(b)-calcTotal(a)))[0]}
+function getFrequentPlayers(hist,uid,limit){if(!uid)return[];const ct={};hist.slice(0,15).forEach(g=>{if(!g.players.some(p=>p.userId===uid))return;g.players.forEach(p=>{if(pkey(p)!==uid){ct[p.name]=(ct[p.name]||0)+1}})});return Object.entries(ct).sort((a,b)=>b[1]-a[1]).slice(0,limit||5).map(([k])=>k)}
 
 function playSound(type){try{const c=new(window.AudioContext||window.webkitAudioContext)();const t=c.currentTime;
 if(type==="frog"){[0,0.25].forEach(off=>{const o=c.createOscillator();const g=c.createGain();const lfo=c.createOscillator();const lg=c.createGain();o.connect(g);g.connect(c.destination);lfo.connect(lg);lg.connect(o.frequency);o.frequency.value=180;lfo.frequency.value=30;lg.gain.value=60;g.gain.setValueAtTime(0.4,t+off);g.gain.exponentialRampToValueAtTime(0.01,t+off+0.2);o.start(t+off);o.stop(t+off+0.22);lfo.start(t+off);lfo.stop(t+off+0.22)})}
 else if(type==="cat"){const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(700,t);o.frequency.linearRampToValueAtTime(500,t+0.15);o.frequency.linearRampToValueAtTime(600,t+0.3);o.frequency.linearRampToValueAtTime(350,t+0.55);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.35,t+0.05);g.gain.setValueAtTime(0.35,t+0.3);g.gain.linearRampToValueAtTime(0,t+0.6);o.start(t);o.stop(t+0.65)}
 else if(type==="bird"){[0,0.4].forEach(off=>{const o=c.createOscillator();const g=c.createGain();const vib=c.createOscillator();const vg=c.createGain();o.connect(g);g.connect(c.destination);vib.connect(vg);vg.connect(o.frequency);o.frequency.setValueAtTime(1800,t+off);o.frequency.linearRampToValueAtTime(1200,t+off+0.3);vib.frequency.value=25;vg.gain.value=120;g.gain.setValueAtTime(0,t+off);g.gain.linearRampToValueAtTime(0.3,t+off+0.03);g.gain.setValueAtTime(0.3,t+off+0.15);g.gain.linearRampToValueAtTime(0,t+off+0.35);o.start(t+off);o.stop(t+off+0.37);vib.start(t+off);vib.stop(t+off+0.37)})}
-else if(type==="dino"){const o=c.createOscillator();const o2=c.createOscillator();const g=c.createGain();const dist=c.createWaveShaper();const curve=new Float32Array(256);for(let i=0;i<256;i++){const x=i*2/256-1;curve[i]=Math.sign(x)*(1-Math.exp(-3*Math.abs(x)))}dist.curve=curve;o.connect(dist);o2.connect(dist);dist.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(90,t);o.frequency.linearRampToValueAtTime(60,t+0.5);o.frequency.linearRampToValueAtTime(45,t+0.8);o2.frequency.setValueAtTime(130,t);o2.frequency.linearRampToValueAtTime(80,t+0.5);o2.frequency.linearRampToValueAtTime(55,t+0.8);o.type="sawtooth";o2.type="square";g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.4,t+0.08);g.gain.setValueAtTime(0.4,t+0.4);g.gain.linearRampToValueAtTime(0,t+0.9);o.start(t);o.stop(t+0.95);o2.start(t);o2.stop(t+0.95)}
+else if(type==="dino"){const o=c.createOscillator();const o2=c.createOscillator();const g=c.createGain();const dist=c.createWaveShaper();const curve=new Float32Array(256);for(let i=0;i<256;i++){const x=i*2/256-1;curve[i]=Math.sign(x)*(1-Math.exp(-3*Math.abs(x)))}dist.curve=curve;o.connect(dist);o2.connect(dist);dist.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(90,t);o.frequency.linearRampToValueAtTime(45,t+0.8);o2.frequency.setValueAtTime(130,t);o2.frequency.linearRampToValueAtTime(55,t+0.8);o.type="sawtooth";o2.type="square";g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.4,t+0.08);g.gain.setValueAtTime(0.4,t+0.4);g.gain.linearRampToValueAtTime(0,t+0.9);o.start(t);o.stop(t+0.95);o2.start(t);o2.stop(t+0.95)}
 else{const o=c.createOscillator();const g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=800;g.gain.value=0.3;o.start();o.stop(t+0.3)}}catch(e){}}
 
 /* ═══ Leaderboard Builder ═══ */
@@ -87,15 +78,12 @@ function buildLeaderboard(history,fu={}){
   history.forEach(game=>{
     if(!game.finished||game.scoringType==="independent")return;
     let indivs=game.players;
-    if(game.teamMode&&game.teams){
-      const am=game.teams.flatMap(t=>t.members);
-      if(game.players.some(p=>!am.includes(p.name))){
-        indivs=game.teams.flatMap(team=>{const tp=game.players.find(p=>p.name===team.name);const sz=Math.max(1,team.members.length);return team.members.map(n=>({name:n,team:team.name,userId:game.players.find(pp=>pp.name===n)?.userId,scores:tp?Object.fromEntries(Object.entries(tp.scores).map(([k,v])=>[k,String(Math.round((parseInt(v)||0)/sz))])):{}  }))});
-      }
-    }
+    if(game.teamMode&&game.teams){const am=game.teams.flatMap(t=>t.members);if(game.players.some(p=>!am.includes(p.name))){indivs=game.teams.flatMap(team=>{const tp=game.players.find(p=>p.name===team.name);const sz=Math.max(1,team.members.length);return team.members.map(n=>({name:n,team:team.name,userId:game.players.find(pp=>pp.name===n)?.userId,scores:tp?Object.fromEntries(Object.entries(tp.scores).map(([k,v])=>[k,String(Math.round((parseFloat(v)||0)/sz))])):{}  }))})}}
     const tTotals={};
     if(game.teamMode&&game.teams)game.teams.forEach(t=>{const ms=indivs.filter(p=>t.members.includes(p.name));tTotals[t.name]=ms.reduce((s,p)=>s+calcTotal(p),0)});
     const maxT=game.teamMode&&game.teams?Math.max(...Object.values(tTotals),0):Math.max(...indivs.map(calcTotal),0);
+    const minT=game.teamMode&&game.teams?Math.min(...Object.values(tTotals)):Math.min(...indivs.map(calcTotal));
+    const winT=game.lowWins?minT:maxT;
     indivs.forEach(p=>{
       const k=pkey(p);const dn=rname(p,fu);
       if(!players[k])players[k]={name:dn,key:k,wins:0,games:0,totalScore:0};
@@ -104,84 +92,54 @@ function buildLeaderboard(history,fu={}){
       const tn=game.teamMode&&game.teams?game.teams.find(t=>t.members.includes(p.name))?.name:null;
       const tt=tn?tTotals[tn]:calcTotal(p);
       players[k].games+=1;players[k].totalScore+=Math.round(tt/tsz);
-      if(tn?tt===maxT:calcTotal(p)===maxT)players[k].wins+=1/tsz;
+      if(tn?tt===winT:calcTotal(p)===winT)players[k].wins+=1/tsz;
     });
   });
   const indGames={};
-  history.forEach(g=>{
-    if(!g.finished||g.scoringType!=="independent")return;
-    const k=g.gameKey==="custom"?g.gameName:g.gameKey;
-    if(!indGames[k])indGames[k]={maxScore:g.maxScore||10,entries:{}};
-    g.players.forEach(p=>{const sc=parseFloat(p.scores?.Score)||0;const pk=pkey(p);if(!indGames[k].entries[pk])indGames[k].entries[pk]={total:0,count:0,name:rname(p,fu)};indGames[k].entries[pk].total+=sc;indGames[k].entries[pk].count+=1});
-  });
-  Object.values(indGames).forEach(ig=>{
-    let best=-1;const effs={};
-    Object.entries(ig.entries).forEach(([n,{total,count}])=>{const avg=total/count;const eff=avg*Math.min(1,count/10);effs[n]=eff;if(eff>best)best=eff});
-    if(best<=0)return;
-    Object.entries(effs).forEach(([n,eff])=>{
-      if(Math.abs(eff-best)<0.001){if(!players[n])players[n]={name:ig.entries[n]?.name||n,key:n,wins:0,games:0,totalScore:0};players[n].wins+=1;players[n].games+=1}
-    });
-  });
+  history.forEach(g=>{if(!g.finished||g.scoringType!=="independent")return;const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!indGames[k])indGames[k]={maxScore:g.maxScore||10,entries:{}};g.players.forEach(p=>{const sc=parseFloat(p.scores?.Score)||0;const pk=pkey(p);if(!indGames[k].entries[pk])indGames[k].entries[pk]={total:0,count:0,name:rname(p,fu)};indGames[k].entries[pk].total+=sc;indGames[k].entries[pk].count+=1})});
+  Object.values(indGames).forEach(ig=>{let best=-1;const effs={};Object.entries(ig.entries).forEach(([n,{total,count}])=>{const eff=(total/count)*Math.min(1,count/10);effs[n]=eff;if(eff>best)best=eff});if(best<=0)return;Object.entries(effs).forEach(([n,eff])=>{if(Math.abs(eff-best)<0.001){if(!players[n])players[n]={name:ig.entries[n]?.name||n,key:n,wins:0,games:0,totalScore:0};players[n].wins+=1;players[n].games+=1}})});
   return Object.values(players).map(p=>({...p,wins:Math.round(p.wins*100)/100,winRate:p.games>0?p.wins/p.games:0,avgScore:p.games>0?Math.round(p.totalScore/p.games):0}));
 }
 function buildIndependentRankings(history,gameKey,fu={}){
   const players={};
-  history.forEach(g=>{if(!g.finished||g.scoringType!=="independent")return;const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(k!==gameKey)return;
-    g.players.forEach(p=>{const sc=parseFloat(p.scores?.Score)||0;const pk=pkey(p);const dn=rname(p,fu);if(!players[pk])players[pk]={name:dn,total:0,count:0,lastPlayed:null};players[pk].name=dn;players[pk].total+=sc;players[pk].count+=1;const d=g.finishedAt||g.startedAt;if(!players[pk].lastPlayed||d>players[pk].lastPlayed)players[pk].lastPlayed=d});
-  });
+  history.forEach(g=>{if(!g.finished||g.scoringType!=="independent")return;const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(k!==gameKey)return;g.players.forEach(p=>{const sc=parseFloat(p.scores?.Score)||0;const pk=pkey(p);const dn=rname(p,fu);if(!players[pk])players[pk]={name:dn,total:0,count:0,lastPlayed:null};players[pk].name=dn;players[pk].total+=sc;players[pk].count+=1;const d=g.finishedAt||g.startedAt;if(!players[pk].lastPlayed||d>players[pk].lastPlayed)players[pk].lastPlayed=d})});
   const ms=history.find(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;return k===gameKey&&g.scoringType==="independent"})?.maxScore||10;
   return Object.values(players).map(p=>({...p,avg:p.count>0?p.total/p.count:0,effective:p.count>0?(p.total/p.count)*Math.min(1,p.count/10):0,maxScore:ms})).sort((a,b)=>b.effective-a.effective);
 }
 
-function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms,user,fu){
+function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms,user,fu,lw){
   const def=BUILT_IN_GAMES[gk]||{name:cn,emoji:ce||"🎲",categories:cats,scoringType:st};
   const isInd=st==="independent"||def.scoringType==="independent";
   const categories=isInd?["Score"]:(gk==="custom"?cats:def.categories);
   const emoji=gk==="custom"?(ce||"🎲"):def.emoji;
-  const maxScore=isInd?(ms||def.maxScore||10):null;
-  const myName=user&&fu?fu[user.userId]?.displayName:null;
+  const maxScore=isInd?(ms||def.maxScore||50):null;
+  const lowWins=!!(lw||def.lowWins);
+  const myName=user&&fu&&fu[user.userId]?fu[user.userId].displayName:(user?.displayName||null);
   const players=tm&&teams?teams.flatMap(team=>team.members.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""])),team:team.name,userId:user&&n===myName?user.userId:undefined}))):pn.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""])),userId:user&&n===myName?user.userId:undefined}));
-  return{id:Date.now(),gameKey:gk,gameName:gk==="custom"?(cn||"Custom Game"):def.name,emoji,categories,players,teamMode:!!tm,teams:tm?teams:null,startedAt:new Date().toISOString(),finished:false,scoringType:isInd?"independent":"standard",maxScore};
+  return{id:Date.now(),gameKey:gk,gameName:gk==="custom"?(cn||"Custom Game"):def.name,emoji,categories,players,teamMode:!!tm,teams:tm?teams:null,startedAt:new Date().toISOString(),finished:false,scoringType:isInd?"independent":"standard",maxScore,lowWins};
 }
 
 /* ═══ Reducer ═══ */
 const INIT={screen:"welcome",user:null,family:null,familyUsers:{},history:[],templates:{},current:null,detailId:null};
 function reducer(state,action){
   switch(action.type){
-    case "HYDRATE":{const p=action.payload;return{...state,...p,screen:p.user?"home":"welcome"};}
+    case "HYDRATE":{const p=action.payload;return{...state,...p,screen:p.user?"home":"welcome"}}
     case "GO":return{...state,screen:action.screen,detailId:action.id??state.detailId};
     case "SET_USER":return{...state,user:action.user,screen:"family"};
     case "GUEST":return{...state,user:{guest:true},screen:"home"};
     case "LOGOUT":return{...state,user:null,family:null,familyUsers:{},history:[],templates:{},current:null,screen:"welcome"};
-    case "JOIN_FAMILY":{const u={...state.user,families:[...(state.user.families||[]).filter(f=>f!==action.family),action.family]};return{...state,user:u,family:action.family,familyUsers:{},history:[],templates:{}};}
-    case "LEAVE_FAMILY":{const fams=(state.user.families||[]).filter(f=>f!==action.family);const u={...state.user,families:fams};const newFam=state.family===action.family?(fams[0]||null):state.family;return{...state,user:u,family:newFam,familyUsers:state.family===action.family?{}:state.familyUsers,history:state.family===action.family?[]:state.history,templates:state.family===action.family?{}:state.templates};}
+    case "JOIN_FAMILY":{const u={...state.user,families:[...(state.user.families||[]).filter(f=>f!==action.family),action.family]};return{...state,user:u,family:action.family,familyUsers:{},history:[],templates:{}}}
+    case "LEAVE_FAMILY":{const fams=(state.user.families||[]).filter(f=>f!==action.family);const u={...state.user,families:fams};const nf=state.family===action.family?(fams[0]||null):state.family;return{...state,user:u,family:nf,familyUsers:state.family===action.family?{}:state.familyUsers,history:state.family===action.family?[]:state.history,templates:state.family===action.family?{}:state.templates}}
     case "SWITCH_FAMILY":return{...state,family:action.family,familyUsers:{},history:[],templates:{},current:null};
     case "SET_FAMILY_USERS":return{...state,familyUsers:action.familyUsers};
-    case "CLAIM_GAMES":{
-      const h=state.history.map(g=>{if(!action.gameIds.includes(g.id))return g;return{...g,players:g.players.map(p=>p.name===action.oldName?{...p,userId:action.userId,name:action.newName}:p)}});
-      return{...state,history:h};
-    }
-    case "RENAME_USER":{
-      const fu={...state.familyUsers,[action.userId]:{...state.familyUsers[action.userId],displayName:action.newName}};
-      const h=state.history.map(g=>({...g,players:g.players.map(p=>p.userId===action.userId?{...p,name:action.newName}:p)}));
-      return{...state,familyUsers:fu,history:h};
-    }
-    case "START_GAME":{
-      const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams,action.scoringType,action.maxScore,state.user,state.familyUsers);
-      const templates={...state.templates};const tKey=action.gameKey==="custom"?(action.customName||"Custom Game"):action.gameKey;
-      if(!templates[tKey])templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories,scoringType:g.scoringType,maxScore:g.maxScore};
-      return{...state,screen:"game",current:g,templates};
-    }
-    case "SET_SCORE":{const c={...state.current};c.players=c.players.map((p,pi)=>pi===action.pi?{...p,scores:{...p.scores,[action.cat]:action.val}}:p);return{...state,current:c};}
-    case "ADD_CATEGORY":{const c={...state.current};c.categories=[...c.categories,action.cat];c.players=c.players.map(p=>({...p,scores:{...p.scores,[action.cat]:""}}));return{...state,current:c};}
-    case "FINISH":{
-      const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};
-      const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;const templates={...state.templates};
-      if(!templates[tKey])templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories,scoringType:fin.scoringType,maxScore:fin.maxScore};
-      return{...state,screen:"home",current:null,history:[fin,...state.history],templates};
-    }
-    case "DELETE_HISTORY":{const u=state.history.filter(g=>g.id!==action.id);if(state.family&&sb)dbSave(state.family,u).catch(()=>{});return{...state,history:u,screen:"history",detailId:null};}
-    case "DELETE_TEMPLATE":{const t={...state.templates};delete t[action.key];return{...state,templates:t};}
+    case "CLAIM_GAMES":{const h=state.history.map(g=>{if(!action.gameIds.includes(g.id))return g;return{...g,players:g.players.map(p=>p.name===action.oldName?{...p,userId:action.userId,name:action.newName}:p)}});return{...state,history:h}}
+    case "RENAME_USER":{const u={...state.user,displayName:action.newName};const fu={...state.familyUsers,[action.userId]:{...state.familyUsers[action.userId],displayName:action.newName}};const h=state.history.map(g=>({...g,players:g.players.map(p=>p.userId===action.userId?{...p,name:action.newName}:p)}));return{...state,user:u,familyUsers:fu,history:h}}
+    case "START_GAME":{const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams,action.scoringType,action.maxScore,state.user,state.familyUsers,action.lowWins);const templates={...state.templates};const tKey=action.gameKey==="custom"?(action.customName||"Custom Game"):action.gameKey;if(!templates[tKey])templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories,scoringType:g.scoringType,maxScore:g.maxScore,lowWins:g.lowWins};return{...state,screen:"game",current:g,templates}}
+    case "SET_SCORE":{const c={...state.current};c.players=c.players.map((p,pi)=>pi===action.pi?{...p,scores:{...p.scores,[action.cat]:action.val}}:p);return{...state,current:c}}
+    case "ADD_CATEGORY":{const c={...state.current};c.categories=[...c.categories,action.cat];c.players=c.players.map(p=>({...p,scores:{...p.scores,[action.cat]:""}}));return{...state,current:c}}
+    case "FINISH":{const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;const templates={...state.templates};if(!templates[tKey])templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories,scoringType:fin.scoringType,maxScore:fin.maxScore,lowWins:fin.lowWins};return{...state,screen:"home",current:null,history:[fin,...state.history],templates}}
+    case "DELETE_HISTORY":{const u=state.history.filter(g=>g.id!==action.id);if(state.family&&sb)dbSave(state.family,u).catch(()=>{});return{...state,history:u,screen:"history",detailId:null}}
+    case "DELETE_TEMPLATE":{const t={...state.templates};delete t[action.key];return{...state,templates:t}}
     case "SYNC_HISTORY":return{...state,history:action.history};
     case "SYNC_TEMPLATES":return{...state,templates:{...state.templates,...action.templates}};
     default:return state;
@@ -198,44 +156,15 @@ function App(){
   const[timerRepeat,setTimerRepeat]=useState(false);
   const[timerSound,setTimerSound]=useState("beep");
 
-  // Hydrate
   useEffect(()=>{try{const s=JSON.parse(localStorage.getItem("bgs_v3")||"null");if(s)dispatch({type:"HYDRATE",payload:s})}catch{}},[]);
-  // Persist
   useEffect(()=>{localStorage.setItem("bgs_v3",JSON.stringify({user:state.user,family:state.family,familyUsers:state.familyUsers,history:state.history,templates:state.templates,current:state.current}))},[state.user,state.family,state.familyUsers,state.history,state.templates,state.current]);
-  // Sync family data
-  useEffect(()=>{
-    if(!state.family||!sb)return;
-    (async()=>{setSyncing(true);
-      const[g,rt,fu]=await Promise.all([dbLoad(state.family),dbLoad(state.family+"_templates"),dbLoad(state.family+"_users")]);
-      if(g)dispatch({type:"SYNC_HISTORY",history:g});
-      if(rt)dispatch({type:"SYNC_TEMPLATES",templates:rt});
-      if(fu)dispatch({type:"SET_FAMILY_USERS",familyUsers:fu});
-      setSyncing(false);
-    })();
-  },[state.family,state.screen]);
-  // Sync templates to supabase
+  useEffect(()=>{if(!state.family||!sb)return;(async()=>{setSyncing(true);const[g,rt,fu]=await Promise.all([dbLoad(state.family),dbLoad(state.family+"_templates"),dbLoad(state.family+"_users")]);if(g)dispatch({type:"SYNC_HISTORY",history:g});if(rt)dispatch({type:"SYNC_TEMPLATES",templates:rt});if(fu)dispatch({type:"SET_FAMILY_USERS",familyUsers:fu});setSyncing(false)})()},[state.family,state.screen]);
   useEffect(()=>{if(!state.family||!sb||!Object.keys(state.templates).length)return;dbSave(state.family+"_templates",state.templates).catch(()=>{})},[state.templates,state.family]);
-  // Sync familyUsers to supabase
   useEffect(()=>{if(!state.family||!sb||!Object.keys(state.familyUsers).length)return;dbSave(state.family+"_users",state.familyUsers).catch(()=>{})},[state.familyUsers,state.family]);
-  // Sync user record
-  useEffect(()=>{if(!state.user||state.user.guest||!sb)return;dbSaveUser(state.user.userId,{pin:state.user.pin,families:state.user.families||[],createdAt:state.user.createdAt}).catch(()=>{})},[state.user]);
+  useEffect(()=>{if(!state.user||state.user.guest||!sb)return;dbSaveUser(state.user.userId,{pin:state.user.pin,displayName:state.user.displayName,families:state.user.families||[],createdAt:state.user.createdAt}).catch(()=>{})},[state.user]);
+  useEffect(()=>{if(!timerRun||timerRem===null)return;const id=setInterval(()=>{setTimerRem(prev=>{if(prev<=1){playSound(timerSound);if(timerRepeat)return timerSet.min*60+timerSet.sec;setTimerRun(false);return 0}return prev-1})},1000);return()=>clearInterval(id)},[timerRun,timerRepeat,timerSet,timerSound]);
 
-  // Timer tick
-  useEffect(()=>{
-    if(!timerRun||timerRem===null)return;
-    const id=setInterval(()=>{setTimerRem(prev=>{if(prev<=1){playSound(timerSound);if(timerRepeat)return timerSet.min*60+timerSet.sec;setTimerRun(false);return 0}return prev-1})},1000);
-    return()=>clearInterval(id);
-  },[timerRun,timerRepeat,timerSet,timerSound]);
-
-  const finishGame=useCallback(async()=>{
-    dispatch({type:"FINISH"});
-    if(state.family&&sb&&state.current){
-      const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};
-      const existing=await dbLoad(state.family)||[];
-      const merged=[fin,...existing.filter(g=>g.id!==fin.id)];
-      await dbSave(state.family,merged);
-    }
-  },[state.family,state.current]);
+  const finishGame=useCallback(async()=>{dispatch({type:"FINISH"});if(state.family&&sb&&state.current){const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};const existing=await dbLoad(state.family)||[];const merged=[fin,...existing.filter(g=>g.id!==fin.id)];await dbSave(state.family,merged)}},[state.family,state.current]);
 
   const timerProps={timerSet,setTimerSet,timerRem,setTimerRem,timerRun,setTimerRun,timerRepeat,setTimerRepeat,timerSound,setTimerSound};
   const screens={welcome:WelcomeScreen,home:HomeScreen,setup:SetupScreen,game:GameScreen,history:HistoryScreen,historyDetail:HistoryDetail,leaderboard:LeaderboardScreen,family:FamilyScreen,timer:TimerScreen};
@@ -261,65 +190,26 @@ function WelcomeScreen({state,dispatch}){
   const[mode,setMode]=useState(null);
   const[uid,setUid]=useState("");
   const[pin,setPin]=useState("");
-  const[dname,setDname]=useState("");
   const[err,setErr]=useState("");
   const[loading,setLoading]=useState(false);
-
-  async function create(){
-    if(!uid.trim()||!pin.trim()||!dname.trim()){setErr("All fields required");return}
-    if(pin.trim().length<4){setErr("PIN must be at least 4 characters");return}
-    setLoading(true);setErr("");
-    const id=uid.trim().toLowerCase().replace(/\s+/g,"");
-    if(sb){const existing=await dbLoadUser(id);if(existing){setErr("Username taken");setLoading(false);return}}
-    const user={userId:id,pin:pin.trim(),families:[],createdAt:new Date().toISOString()};
-    if(sb)await dbSaveUser(id,{pin:user.pin,families:[],createdAt:user.createdAt});
-    dispatch({type:"SET_USER",user});
-    setLoading(false);
-  }
-  async function login(){
-    if(!uid.trim()||!pin.trim()){setErr("Username and PIN required");return}
-    setLoading(true);setErr("");
-    const id=uid.trim().toLowerCase().replace(/\s+/g,"");
-    if(sb){
-      const data=await dbLoadUser(id);
-      if(!data){setErr("Username not found");setLoading(false);return}
-      if(data.pin!==pin.trim()){setErr("Wrong PIN");setLoading(false);return}
-      const user={userId:id,pin:data.pin,families:data.families||[],createdAt:data.createdAt};
-      dispatch({type:"SET_USER",user});
-      if(user.families.length>0)dispatch({type:"JOIN_FAMILY",family:user.families[0]});
-    }else{setErr("Supabase required to log in across devices");setLoading(false);return}
-    setLoading(false);
-  }
-
+  async function create(){if(!uid.trim()||!pin.trim()){setErr("Username and PIN required");return}if(pin.trim().length<4){setErr("PIN must be at least 4 characters");return}setLoading(true);setErr("");const id=uid.trim().toLowerCase().replace(/\s+/g,"");if(sb){const existing=await dbLoadUser(id);if(existing){setErr("Username taken");setLoading(false);return}}const user={userId:id,displayName:id,pin:pin.trim(),families:[],createdAt:new Date().toISOString()};if(sb)await dbSaveUser(id,{pin:user.pin,displayName:id,families:[],createdAt:user.createdAt});dispatch({type:"SET_USER",user});setLoading(false)}
+  async function login(){if(!uid.trim()||!pin.trim()){setErr("Username and PIN required");return}setLoading(true);setErr("");const id=uid.trim().toLowerCase().replace(/\s+/g,"");if(sb){const data=await dbLoadUser(id);if(!data){setErr("Username not found");setLoading(false);return}if(data.pin!==pin.trim()){setErr("Wrong PIN");setLoading(false);return}const user={userId:id,displayName:data.displayName||id,pin:data.pin,families:data.families||[],createdAt:data.createdAt};dispatch({type:"SET_USER",user});if(user.families.length>0)dispatch({type:"JOIN_FAMILY",family:user.families[0]})}else{setErr("Supabase required");setLoading(false);return}setLoading(false)}
   return(
     <div style={{padding:"40px 24px",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
       <div style={{textAlign:"center",marginBottom:40}}>
         <div style={{fontSize:56,marginBottom:8}}>🎲</div>
-        <h1 style={{fontSize:32,fontFamily:"Georgia,serif",fontWeight:900,color:C.ink}}>Tally</h1>
+        <h1 style={{fontSize:32,fontFamily:"Georgia,serif",fontWeight:900,color:C.ink}}>Score Keeper</h1>
         <p style={{color:C.white,fontSize:14,marginTop:8}}>Track scores, settle debates.</p>
       </div>
-
-      {!mode?(
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <Btn full primary onClick={()=>setMode("create")}>Create Account</Btn>
-          <Btn full onClick={()=>setMode("login")}>I have an account</Btn>
-          <div onClick={()=>dispatch({type:"GUEST"})} style={{textAlign:"center",color:C.white,fontSize:13,cursor:"pointer",marginTop:8,textDecoration:"underline"}}>Skip — play as guest</div>
-        </div>
-      ):mode==="create"?(
+      {!mode?(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <Btn full primary onClick={()=>setMode("create")}>Create Account</Btn>
+        <Btn full onClick={()=>setMode("login")}>I have an account</Btn>
+        <div onClick={()=>dispatch({type:"GUEST"})} style={{textAlign:"center",color:C.white,fontSize:13,cursor:"pointer",marginTop:8,textDecoration:"underline"}}>Skip — play as guest</div>
+      </div>):mode==="create"?(
         <div style={{...S.card,padding:20}}>
           <h3 style={{fontFamily:"Georgia,serif",marginBottom:16,fontSize:18}}>Create Account</h3>
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:4}}>USERNAME</div>
-            <input style={inp} placeholder="e.g. sarah123" value={uid} onChange={e=>setUid(e.target.value)}/>
-          </div>
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:4}}>PIN (4+ characters)</div>
-            <input style={inp} type="password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value)}/>
-          </div>
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:4}}>DISPLAY NAME</div>
-            <input style={inp} placeholder="e.g. Sarah" value={dname} onChange={e=>setDname(e.target.value)}/>
-          </div>
+          <div style={{marginBottom:12}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>USERNAME</div><input style={inp} placeholder="e.g. sarah123" value={uid} onChange={e=>setUid(e.target.value)}/></div>
+          <div style={{marginBottom:16}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>PIN (4+ characters)</div><input style={inp} type="password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value)}/></div>
           {err&&<div style={{color:C.tomato,fontSize:13,fontWeight:700,marginBottom:12}}>{err}</div>}
           <Btn full primary disabled={loading} onClick={create}>{loading?"Creating…":"Create →"}</Btn>
           <div style={{textAlign:"center",marginTop:12}}><span onClick={()=>{setMode(null);setErr("")}} style={{color:C.muted,fontSize:13,cursor:"pointer"}}>← Back</span></div>
@@ -327,14 +217,8 @@ function WelcomeScreen({state,dispatch}){
       ):(
         <div style={{...S.card,padding:20}}>
           <h3 style={{fontFamily:"Georgia,serif",marginBottom:16,fontSize:18}}>Log In</h3>
-          <div style={{marginBottom:12}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:4}}>USERNAME</div>
-            <input style={inp} placeholder="e.g. sarah123" value={uid} onChange={e=>setUid(e.target.value)}/>
-          </div>
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:4}}>PIN</div>
-            <input style={inp} type="password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value)}/>
-          </div>
+          <div style={{marginBottom:12}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>USERNAME</div><input style={inp} placeholder="e.g. sarah123" value={uid} onChange={e=>setUid(e.target.value)}/></div>
+          <div style={{marginBottom:16}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>PIN</div><input style={inp} type="password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value)}/></div>
           {err&&<div style={{color:C.tomato,fontSize:13,fontWeight:700,marginBottom:12}}>{err}</div>}
           <Btn full primary disabled={loading} onClick={login}>{loading?"Logging in…":"Log In →"}</Btn>
           <div style={{textAlign:"center",marginTop:12}}><span onClick={()=>{setMode(null);setErr("")}} style={{color:C.muted,fontSize:13,cursor:"pointer"}}>← Back</span></div>
@@ -363,53 +247,23 @@ function TimerScreen({timerProps}){
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>⏱ Timer</h2>
-      {!active?(
-        <div>
-          <div style={{...S.card,padding:24,marginBottom:20,textAlign:"center"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginBottom:16}}>
-              <div>
-                <div style={{fontSize:11,color:C.muted,marginBottom:4}}>MIN</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <button onClick={()=>setTimerSet(p=>({...p,min:Math.max(0,p.min-1)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>−</button>
-                  <span style={{fontSize:36,fontWeight:900,fontFamily:"Georgia,serif",width:50,textAlign:"center"}}>{timerSet.min}</span>
-                  <button onClick={()=>setTimerSet(p=>({...p,min:p.min+1}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>+</button>
-                </div>
-              </div>
-              <span style={{fontSize:36,fontWeight:900,marginTop:16}}>:</span>
-              <div>
-                <div style={{fontSize:11,color:C.muted,marginBottom:4}}>SEC</div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <button onClick={()=>setTimerSet(p=>({...p,sec:Math.max(0,p.sec-5)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>−</button>
-                  <span style={{fontSize:36,fontWeight:900,fontFamily:"Georgia,serif",width:50,textAlign:"center"}}>{String(timerSet.sec).padStart(2,'0')}</span>
-                  <button onClick={()=>setTimerSet(p=>({...p,sec:Math.min(55,p.sec+5)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>+</button>
-                </div>
-              </div>
-            </div>
-            <button onClick={()=>setTimerRepeat(r=>!r)} style={{background:timerRepeat?C.lime:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 16px",fontSize:13,cursor:"pointer",fontWeight:700,marginBottom:16}}>🔁 Repeat {timerRepeat?"ON":"OFF"}</button>
-            <div style={{marginBottom:4}}>
-              <div style={{fontSize:11,color:C.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:2}}>Timer Sound</div>
-              <div style={{display:"flex",gap:8,justifyContent:"center"}}>{SOUNDS.map(s=><button key={s.id} onClick={()=>{setTimerSound(s.id);playSound(s.id)}} style={{background:timerSound===s.id?C.tomato:C.white,border:`2px solid ${C.ink}`,borderRadius:12,padding:"10px 14px",fontSize:22,cursor:"pointer",color:timerSound===s.id?C.white:C.ink,boxShadow:timerSound===s.id?`2px 2px 0 ${C.ink}`:"none"}}>{s.emoji}</button>)}</div>
-            </div>
+      {!active?(<div>
+        <div style={{...S.card,padding:24,marginBottom:20,textAlign:"center"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginBottom:16}}>
+            <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>MIN</div><div style={{display:"flex",alignItems:"center",gap:6}}><button onClick={()=>setTimerSet(p=>({...p,min:Math.max(0,p.min-1)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>−</button><span style={{fontSize:36,fontWeight:900,fontFamily:"Georgia,serif",width:50,textAlign:"center"}}>{timerSet.min}</span><button onClick={()=>setTimerSet(p=>({...p,min:p.min+1}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>+</button></div></div>
+            <span style={{fontSize:36,fontWeight:900,marginTop:16}}>:</span>
+            <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>SEC</div><div style={{display:"flex",alignItems:"center",gap:6}}><button onClick={()=>setTimerSet(p=>({...p,sec:Math.max(0,p.sec-5)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>−</button><span style={{fontSize:36,fontWeight:900,fontFamily:"Georgia,serif",width:50,textAlign:"center"}}>{String(timerSet.sec).padStart(2,'0')}</span><button onClick={()=>setTimerSet(p=>({...p,sec:Math.min(55,p.sec+5)}))} style={{width:36,height:36,borderRadius:8,border:`2px solid ${C.ink}`,background:C.white,fontSize:18,cursor:"pointer",fontWeight:900}}>+</button></div></div>
           </div>
-          <Btn full primary disabled={total===0} onClick={()=>{setTimerRem(total);setTimerRun(true)}}>▶ Start Timer</Btn>
+          <button onClick={()=>setTimerRepeat(r=>!r)} style={{background:timerRepeat?C.lime:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 16px",fontSize:13,cursor:"pointer",fontWeight:700,marginBottom:16}}>🔁 Repeat {timerRepeat?"ON":"OFF"}</button>
+          <div><div style={{fontSize:11,color:C.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:2}}>Timer Sound</div><div style={{display:"flex",gap:8,justifyContent:"center"}}>{SOUNDS.map(s=><button key={s.id} onClick={()=>{setTimerSound(s.id);playSound(s.id)}} style={{background:timerSound===s.id?C.tomato:C.white,border:`2px solid ${C.ink}`,borderRadius:12,padding:"10px 14px",fontSize:22,cursor:"pointer",color:timerSound===s.id?C.white:C.ink,boxShadow:timerSound===s.id?`2px 2px 0 ${C.ink}`:"none"}}>{s.emoji}</button>)}</div></div>
         </div>
-      ):(
-        <div style={{textAlign:"center"}}>
-          <div style={{...S.card,padding:32,marginBottom:20}}>
-            <div style={{fontSize:64,fontWeight:900,fontFamily:"Georgia,serif",color:timerRem<=5?C.tomato:C.ink,marginBottom:8}}>{fmtTime(timerRem)}</div>
-            {timerRepeat&&<div style={{fontSize:12,color:C.muted}}>🔁 Repeat ON</div>}
-          </div>
-          <div style={{display:"flex",gap:12,justifyContent:"center"}}>
-            {timerRun
-              ?<button onClick={()=>setTimerRun(false)} style={{flex:3,padding:"20px",fontSize:18,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,background:C.lime,color:C.ink,cursor:"pointer",boxShadow:`3px 3px 0 ${C.ink}`}}>⏸ Pause</button>
-              :<button onClick={()=>setTimerRun(true)} style={{flex:3,padding:"20px",fontSize:18,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,background:C.lime,color:C.ink,cursor:"pointer",boxShadow:`3px 3px 0 ${C.ink}`}}>▶ Resume</button>
-            }
-            <button onClick={()=>{setTimerRun(false);setTimerRem(null)}} style={{flex:1,padding:"20px",fontSize:14,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,background:"#fde8e8",color:"#c0392b",cursor:"pointer"}}>⏹</button>
-          </div>
-          <button onClick={()=>setTimerRepeat(r=>!r)} style={{marginTop:16,background:timerRepeat?C.lime:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 16px",fontSize:13,cursor:"pointer",fontWeight:700}}>🔁 Repeat {timerRepeat?"ON":"OFF"}</button>
-          <div style={{marginTop:12,display:"flex",gap:8,justifyContent:"center"}}>{SOUNDS.map(s=><button key={s.id} onClick={()=>{setTimerSound(s.id);playSound(s.id)}} style={{background:timerSound===s.id?C.tomato:C.white,border:`2px solid ${C.ink}`,borderRadius:12,padding:"8px 12px",fontSize:20,cursor:"pointer",color:timerSound===s.id?C.white:C.ink}}>{s.emoji}</button>)}</div>
-        </div>
-      )}
+        <Btn full primary disabled={total===0} onClick={()=>{setTimerRem(total);setTimerRun(true)}}>▶ Start Timer</Btn>
+      </div>):(<div style={{textAlign:"center"}}>
+        <div style={{...S.card,padding:32,marginBottom:20}}><div style={{fontSize:64,fontWeight:900,fontFamily:"Georgia,serif",color:timerRem<=5?C.tomato:C.ink,marginBottom:8}}>{fmtTime(timerRem)}</div>{timerRepeat&&<div style={{fontSize:12,color:C.muted}}>🔁 Repeat ON</div>}</div>
+        <div style={{display:"flex",gap:12,justifyContent:"center"}}>{timerRun?<button onClick={()=>setTimerRun(false)} style={{flex:3,padding:"20px",fontSize:18,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,background:C.lime,color:C.ink,cursor:"pointer",boxShadow:`3px 3px 0 ${C.ink}`}}>⏸ Pause</button>:<button onClick={()=>setTimerRun(true)} style={{flex:3,padding:"20px",fontSize:18,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,background:C.lime,color:C.ink,cursor:"pointer",boxShadow:`3px 3px 0 ${C.ink}`}}>▶ Resume</button>}<button onClick={()=>{setTimerRun(false);setTimerRem(null)}} style={{flex:1,padding:"20px",fontSize:14,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,background:"#fde8e8",color:"#c0392b",cursor:"pointer"}}>⏹</button></div>
+        <button onClick={()=>setTimerRepeat(r=>!r)} style={{marginTop:16,background:timerRepeat?C.lime:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 16px",fontSize:13,cursor:"pointer",fontWeight:700}}>🔁 Repeat {timerRepeat?"ON":"OFF"}</button>
+        <div style={{marginTop:12,display:"flex",gap:8,justifyContent:"center"}}>{SOUNDS.map(s=><button key={s.id} onClick={()=>{setTimerSound(s.id);playSound(s.id)}} style={{background:timerSound===s.id?C.tomato:C.white,border:`2px solid ${C.ink}`,borderRadius:12,padding:"8px 12px",fontSize:20,cursor:"pointer",color:timerSound===s.id?C.white:C.ink}}>{s.emoji}</button>)}</div>
+      </div>)}
     </div>
   );
 }
@@ -417,41 +271,20 @@ function TimerScreen({timerProps}){
 /* ═══ Home ═══ */
 function HomeScreen({state,dispatch}){
   const fu=state.familyUsers||{};
-  const lb=buildLeaderboard(state.history,fu);
-  const maxG=Math.max(...lb.map(p=>p.games),1);
+  const lb=buildLeaderboard(state.history,fu);const maxG=Math.max(...lb.map(p=>p.games),1);
   const top=[...lb].sort((a,b)=>(b.winRate*0.6+(b.games/maxG)*0.4)-(a.winRate*0.6+(a.games/maxG)*0.4))[0];
-  const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:null;
+  const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:(state.user?.displayName||null);
   return(
     <div style={{padding:"20px 20px 80px"}}>
-      <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Tally</h1>
+      <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,letterSpacing:-1}}>🎲 Score Keeper</h1>
       {myName&&<p style={{textAlign:"center",color:C.white,fontSize:13,marginBottom:4}}>Hey, <b>{myName}</b>!</p>}
       {state.user?.guest&&<p style={{textAlign:"center",color:C.white,fontSize:12,marginBottom:4,opacity:0.7}}>Playing as guest</p>}
       {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.card}}>{state.family}</b></p>}
-      {!state.family&&<div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center",cursor:"pointer"}} onClick={()=>dispatch({type:"GO",screen:"family"})}>
-        <div style={{fontSize:14,fontWeight:700,color:C.ink}}>👨‍👩‍👧 Join a Family Space to start playing</div>
-      </div>}
-      <div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center",cursor:"pointer"}} onClick={()=>dispatch({type:"GO",screen:"setup"})}>
-        <div style={{fontSize:28,fontWeight:900,fontFamily:"Georgia,serif",color:C.ink}}>+ New Game</div>
-        <div style={{fontSize:12,color:C.muted,marginTop:2}}>Tap to start playing</div>
-      </div>
-      {top&&<div style={{background:C.tomato,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`,padding:"14px 18px",marginBottom:20,textAlign:"center"}}>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.7)",letterSpacing:2}}>⭐ TOP PLAYER</div>
-        <div style={{fontSize:24,fontWeight:900,fontFamily:"Georgia,serif",color:C.white}}>{top.name}</div>
-        <div style={{fontSize:12,color:"rgba(255,255,255,0.85)"}}>{Math.round(top.winRate*100)}% win rate · {top.wins} wins</div>
-      </div>}
-      {state.history.length>0&&<>
-        <h3 style={{...secHead,marginTop:20}}>Recent Games</h3>
-        {state.history.slice(0,3).map(g=>{
-          const w=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];
-          return(<div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span>
-              <span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span>
-            </div>
-            <div style={{color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {rname(w,fu)} — {calcTotal(w)} pts</div>
-          </div>);
-        })}
-      </>}
+      {!state.family&&<div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center",cursor:"pointer"}} onClick={()=>dispatch({type:"GO",screen:"family"})}><div style={{fontSize:14,fontWeight:700,color:C.ink}}>👨‍👩‍👧 Join a Family Space to start playing</div></div>}
+      <div style={{...S.limeCard,padding:"14px 18px",marginBottom:12,textAlign:"center",cursor:"pointer"}} onClick={()=>dispatch({type:"GO",screen:"setup"})}><div style={{fontSize:28,fontWeight:900,fontFamily:"Georgia,serif",color:C.ink}}>+ New Game</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>Tap to start playing</div></div>
+      {top&&<div style={{background:C.tomato,border:`2px solid ${C.ink}`,borderRadius:14,boxShadow:`3px 3px 0 ${C.ink}`,padding:"14px 18px",marginBottom:20,textAlign:"center"}}><div style={{fontSize:10,color:"rgba(255,255,255,0.7)",letterSpacing:2}}>⭐ TOP PLAYER</div><div style={{fontSize:24,fontWeight:900,fontFamily:"Georgia,serif",color:C.white}}>{top.name}</div><div style={{fontSize:12,color:"rgba(255,255,255,0.85)"}}>{Math.round(top.winRate*100)}% win rate · {top.wins} wins</div></div>}
+      {state.history.length>0&&<><h3 style={{...secHead,marginTop:20}}>Recent Games</h3>
+        {state.history.slice(0,3).map(g=>{const w=getWinner(g.players,g);return(<div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span><span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span></div><div style={{color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {rname(w,fu)} — {calcTotal(w)} pts</div></div>)})}</>}
     </div>
   );
 }
@@ -459,46 +292,29 @@ function HomeScreen({state,dispatch}){
 /* ═══ Setup ═══ */
 function SetupScreen({state,dispatch}){
   const fu=state.familyUsers||{};
-  const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:null;
-  const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎","🫘","🐱","🌸","🏟️"];
-  const[gameKey,setGameKey]=useState(null);
-  const[cats,setCats]=useState([""]);
-  const[custName,setCustName]=useState("");
-  const[custEmoji,setCustEmoji]=useState("🎲");
-  const[showPick,setShowPick]=useState(false);
-  const[teamMode,setTeamMode]=useState(false);
-  const[numTeams,setNumTeams]=useState(2);
+  const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:(state.user?.displayName||null);
+  const EMOJI_OPTS=["🎲","🃏","♟","🎯","🧩","🎮","🏆","🌍","🐉","🚂","🏰","🌿","⚔","🔮","🎪","🦁","🚀","🍀","🎠","💎","🫘","🐱","🌸","🏟️","🐰","🌈"];
+  const[gameKey,setGameKey]=useState(null);const[cats,setCats]=useState([""]);const[custName,setCustName]=useState("");const[custEmoji,setCustEmoji]=useState("🎲");const[showPick,setShowPick]=useState(false);
+  const[teamMode,setTeamMode]=useState(false);const[numTeams,setNumTeams]=useState(2);
   const[teams,setTeams]=useState([{name:"Team 1",members:[]},{name:"Team 2",members:[]},{name:"Team 3",members:[]},{name:"Team 4",members:[]}]);
-  const[solo,setSolo]=useState(()=>myName?[myName]:[]);
-  const[newName,setNewName]=useState("");
-  const[scoringType,setScoringType]=useState("standard");
-  const[maxScoreInput,setMaxScoreInput]=useState("10");
-  const[deleteTarget,setDeleteTarget]=useState(null);
-  const lp=useRef(null);const pc=useRef(false);
+  const[solo,setSolo]=useState(()=>myName?[myName]:[]);const[newName,setNewName]=useState("");
+  const[scoringType,setScoringType]=useState("standard");const[maxScoreInput,setMaxScoreInput]=useState("10");const[lowWins,setLowWins]=useState(false);
+  const[deleteTarget,setDeleteTarget]=useState(null);const lp=useRef(null);const pc=useRef(false);
   function hpd(k){if(BUILT_IN_GAMES[k])return;pc.current=false;lp.current=setTimeout(()=>{pc.current=true;setDeleteTarget(k)},600)}
   function hpu(){clearTimeout(lp.current)}
-
-  const lastPlayed={};
-  state.history.forEach(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!lastPlayed[k])lastPlayed[k]=g.finishedAt||g.startedAt;});
-  const allGames={...BUILT_IN_GAMES};
-  Object.entries(state.templates||{}).forEach(([k,t])=>{allGames[k]={...t,name:t.name||t.gameName||k}});
+  const lastPlayed={};state.history.forEach(g=>{const k=g.gameKey==="custom"?g.gameName:g.gameKey;if(!lastPlayed[k])lastPlayed[k]=g.finishedAt||g.startedAt});
+  const allGames={...BUILT_IN_GAMES};Object.entries(state.templates||{}).forEach(([k,t])=>{allGames[k]={...t,name:t.name||t.gameName||k}});
   const gameList=Object.entries(allGames).sort(([ka],[kb])=>{const ta=lastPlayed[ka]||null,tb=lastPlayed[kb]||null;if(ta&&tb)return new Date(tb)-new Date(ta);if(ta)return -1;if(tb)return 1;return 0});
   const knownPlayers=[...new Set(state.history.flatMap(g=>g.teams?g.teams.flatMap(t=>t.members):g.players.map(p=>rname(p,fu))))];
   const freq=getFrequentPlayers(state.history,state.user?.userId,5);
-  // Sort: me first, then frequent, then rest
   const allPool=[...new Set([...(myName?[myName]:[]),...freq,...knownPlayers,...teams.flatMap(t=>t.members),...solo])];
-
   const selectedDef=gameKey?allGames[gameKey]:null;
   const isIndependent=gameKey==="custom"?scoringType==="independent":selectedDef?.scoringType==="independent";
-
-  function pickGame(k){if(pc.current)return;setGameKey(k);const def=allGames[k];setCats(k!=="custom"&&def?.categories&&def.scoringType!=="independent"?def.categories:[""]);setCustEmoji(def?.emoji||"🎲");if(k!=="custom"&&def?.scoringType)setScoringType(def.scoringType);if(k!=="custom"&&def?.maxScore)setMaxScoreInput(String(def.maxScore))}
+  function pickGame(k){if(pc.current)return;setGameKey(k);const def=allGames[k];setCats(k!=="custom"&&def?.categories&&def.scoringType!=="independent"?def.categories:[""]);setCustEmoji(def?.emoji||"🎲");if(k!=="custom"&&def?.scoringType)setScoringType(def.scoringType);if(k!=="custom"&&def?.maxScore)setMaxScoreInput(String(def.maxScore));setLowWins(!!(def?.lowWins))}
   function toggleSolo(n){setSolo(p=>p.includes(n)?p.filter(x=>x!==n):[...p,n])}
   function assignTeam(name,ti){setTeams(prev=>prev.map((t,i)=>{if(i===ti)return t.members.includes(name)?{...t,members:t.members.filter(m=>m!==name)}:{...t,members:[...t.members,name]};return{...t,members:t.members.filter(m=>m!==name)}}))}
   function addNew(){const n=newName.trim();if(!n)return;setNewName("");if(teamMode){const ti=teams.slice(0,numTeams).reduce((mi,t,i,arr)=>t.members.length<arr[mi].members.length?i:mi,0);setTeams(prev=>prev.map((t,i)=>i===ti?{...t,members:[...t.members,n]}:t))}else{setSolo(p=>p.includes(n)?p:[...p,n])}}
-  const activeTeams=teams.slice(0,numTeams).filter(t=>t.members.length>0);
-  const validCats=cats.map((c,i)=>c.trim()||`Round ${i+1}`);
-  const canStart=gameKey&&(teamMode?activeTeams.length>=2:solo.length>=1);
-
+  const activeTeams=teams.slice(0,numTeams).filter(t=>t.members.length>0);const validCats=cats.map((c,i)=>c.trim()||`Round ${i+1}`);const canStart=gameKey&&(teamMode?activeTeams.length>=2:solo.length>=1);
   return(
     <div style={{padding:"20px 20px 100px"}}>
       <TopBar title="New Game" onBack={()=>dispatch({type:"GO",screen:"home"})}/>
@@ -508,63 +324,51 @@ function SetupScreen({state,dispatch}){
           <div key={k} onClick={()=>pickGame(k)} onPointerDown={()=>hpd(k)} onPointerUp={hpu} onPointerLeave={hpu} onPointerCancel={hpu} onContextMenu={e=>{if(!isBI)e.preventDefault()}}
             style={{...S.card,background:gameKey===k?C.tomato:C.card,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,userSelect:"none",WebkitUserSelect:"none"}}>
             <span style={{fontSize:26}}>{g.emoji}</span>
-            <div style={{flex:1}}>
-              <div style={{fontSize:15,fontWeight:700,fontFamily:"Georgia,serif",color:gameKey===k?C.white:C.ink}}>{g.name}{g.scoringType==="independent"?<span style={{fontSize:11,opacity:0.7,marginLeft:6}}>(scored)</span>:""}</div>
-              <div style={{fontSize:11,color:gameKey===k?"rgba(255,255,255,0.8)":C.muted,marginTop:2}}>
-                {lastPlayed[k]?`Last played ${new Date(lastPlayed[k]).toLocaleDateString()}`:"Not played yet"}
-                {!isBI&&<span style={{marginLeft:6,opacity:0.5}}>· hold to delete</span>}
-              </div>
-            </div>
+            <div style={{flex:1}}><div style={{fontSize:15,fontWeight:700,fontFamily:"Georgia,serif",color:gameKey===k?C.white:C.ink}}>{g.name}{g.scoringType==="independent"?<span style={{fontSize:11,opacity:0.7,marginLeft:6}}>(scored)</span>:""}</div><div style={{fontSize:11,color:gameKey===k?"rgba(255,255,255,0.8)":C.muted,marginTop:2}}>{lastPlayed[k]?`Last played ${new Date(lastPlayed[k]).toLocaleDateString()}`:"Not played yet"}{!isBI&&<span style={{marginLeft:6,opacity:0.5}}>· hold to delete</span>}</div></div>
             {gameKey===k&&<span style={{color:C.white,fontWeight:700}}>✓</span>}
-          </div>
-        )})}
+          </div>)})}
       </div>
       {gameKey==="custom"&&(
         <div style={{...S.limeCard,padding:16,marginBottom:24}}>
           <h3 style={{...secHead,marginBottom:10}}>Custom Game</h3>
-          <div style={{display:"flex",gap:8,marginBottom:8}}>
-            <button onClick={()=>setShowPick(p=>!p)} style={{fontSize:24,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"10px 12px",cursor:"pointer"}}>{custEmoji}</button>
-            <input style={{...inp,flex:1}} placeholder="Game name" value={custName} onChange={e=>setCustName(e.target.value)}/>
-          </div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}><button onClick={()=>setShowPick(p=>!p)} style={{fontSize:24,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"10px 12px",cursor:"pointer"}}>{custEmoji}</button><input style={{...inp,flex:1}} placeholder="Game name" value={custName} onChange={e=>setCustName(e.target.value)}/></div>
           {showPick&&<div style={{display:"flex",flexWrap:"wrap",gap:6,background:C.white,borderRadius:10,padding:10,marginBottom:10,border:`2px solid ${C.ink}`}}>{EMOJI_OPTS.map(e=><button key={e} onClick={()=>{setCustEmoji(e);setShowPick(false)}} style={{fontSize:22,background:custEmoji===e?C.tomato:"transparent",border:"none",borderRadius:6,padding:"4px 6px",cursor:"pointer"}}>{e}</button>)}</div>}
           <h3 style={{...secHead,marginTop:12,marginBottom:8}}>Scoring Type</h3>
-          <div style={{display:"flex",gap:10,marginBottom:16}}>
-            {[{v:"standard",l:"📊 Standard"},{v:"independent",l:"⭐ Independent"}].map(({v,l})=><button key={v} onClick={()=>setScoringType(v)} style={{flex:1,padding:"12px 0",fontSize:13,fontWeight:700,background:scoringType===v?C.tomato:C.white,color:scoringType===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:10,cursor:"pointer"}}>{l}</button>)}
-          </div>
-          {scoringType==="standard"?(<div><h3 style={{...secHead,marginBottom:8}}>Score Categories</h3>{cats.map((c,i)=><input key={i} style={{...inp,marginBottom:8}} placeholder={`Round ${i+1}`} value={c} onChange={e=>setCats(cats.map((x,j)=>j===i?e.target.value:x))}/>)}<Btn onClick={()=>setCats(c=>[...c,""])}>+ Add Round</Btn></div>)
-          :(<div><h3 style={{...secHead,marginBottom:8}}>Max Score</h3><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:700}}>Score out of</span><input type="number" inputMode="numeric" style={{...inp,width:80,textAlign:"center"}} value={maxScoreInput} onChange={e=>setMaxScoreInput(e.target.value)}/></div><p style={{color:C.muted,fontSize:11,marginTop:8}}>Each player rates once per game. Leader earns a leaderboard win.</p></div>)}
+          <div style={{display:"flex",gap:10,marginBottom:16}}>{[{v:"standard",l:"📊 Standard"},{v:"independent",l:"⭐ Independent"}].map(({v,l})=><button key={v} onClick={()=>setScoringType(v)} style={{flex:1,padding:"12px 0",fontSize:13,fontWeight:700,background:scoringType===v?C.tomato:C.white,color:scoringType===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:10,cursor:"pointer"}}>{l}</button>)}</div>
+          {scoringType==="standard"?(<div>
+            <h3 style={{...secHead,marginBottom:8}}>Score Categories</h3>
+            {cats.map((c,i)=><input key={i} style={{...inp,marginBottom:8}} placeholder={`Round ${i+1}`} value={c} onChange={e=>setCats(cats.map((x,j)=>j===i?e.target.value:x))}/>)}
+            <Btn onClick={()=>setCats(c=>[...c,""])}>+ Add Round</Btn>
+            <div onClick={()=>setLowWins(v=>!v)} style={{display:"flex",alignItems:"center",gap:10,marginTop:16,cursor:"pointer"}}>
+              <div style={{width:28,height:28,borderRadius:8,border:`2px solid ${C.ink}`,background:lowWins?C.tomato:C.white,display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontSize:16,fontWeight:900,flexShrink:0}}>{lowWins?"✓":""}</div>
+              <div><div style={{fontWeight:700,fontSize:14}}>Lowest score wins</div><div style={{fontSize:11,color:C.muted}}>The player with the lowest total wins</div></div>
+            </div>
+          </div>):(<div>
+            <h3 style={{...secHead,marginBottom:8}}>Max Score</h3>
+            <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:700}}>Score out of</span><input type="number" inputMode="numeric" style={{...inp,width:80,textAlign:"center"}} value={maxScoreInput} onChange={e=>setMaxScoreInput(e.target.value)}/></div>
+            <p style={{color:C.muted,fontSize:11,marginTop:8}}>Each player rates once per game. Leader earns a leaderboard win.</p>
+          </div>)}
         </div>
       )}
       <h3 style={secHead}>Mode</h3>
-      <div style={{display:"flex",gap:10,marginBottom:24}}>
-        {[{v:false,l:"👤 Individual"},{v:true,l:"👥 Team Mode"}].map(({v,l})=><button key={String(v)} onClick={()=>setTeamMode(v)} style={{flex:1,padding:"14px 0",fontSize:14,fontWeight:700,background:teamMode===v?C.tomato:C.card,color:teamMode===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:12,cursor:"pointer",boxShadow:teamMode===v?`3px 3px 0 ${C.ink}`:"none"}}>{l}</button>)}
-      </div>
-      {!teamMode&&(
-        <div style={{...S.card,padding:16,marginBottom:24}}>
-          <h3 style={{...secHead,marginBottom:12}}>Select Players</h3>
-          {allPool.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>{allPool.map(n=>{const isMe=n===myName;return<button key={n} onClick={()=>toggleSolo(n)} style={{background:solo.includes(n)?C.tomato:C.white,border:`2px solid ${isMe?"#3498db":C.ink}`,color:solo.includes(n)?C.white:C.ink,borderRadius:20,padding:"7px 16px",fontSize:13,cursor:"pointer",fontWeight:700}}>{solo.includes(n)?"✓ ":""}{n}{isMe?" (you)":""}</button>})}</div>}
-          <div style={{display:"flex",gap:8}}><input style={{...inp,flex:1}} placeholder="Add new player…" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNew()}/><Btn primary onClick={addNew}>Add</Btn></div>
-        </div>
-      )}
-      {teamMode&&(
-        <div style={{...S.card,padding:16,marginBottom:24}}>
-          <h3 style={{...secHead,marginBottom:10}}>Number of Teams</h3>
-          <div style={{display:"flex",gap:8,marginBottom:20}}>{[2,3,4].map(n=><button key={n} onClick={()=>setNumTeams(n)} style={{flex:1,padding:"10px 0",fontSize:15,fontWeight:700,background:numTeams===n?C.tomato:C.white,color:numTeams===n?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:10,cursor:"pointer"}}>{n} Teams</button>)}</div>
-          <h3 style={{...secHead,marginBottom:10}}>Team Names</h3>
-          {teams.slice(0,numTeams).map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:20}}>{TE[i]}</span><input style={{...inp,flex:1,borderColor:TC[i]}} value={t.name} onChange={e=>setTeams(prev=>prev.map((x,j)=>j===i?{...x,name:e.target.value}:x))}/></div>)}
-          <h3 style={{...secHead,marginTop:20,marginBottom:10}}>Assign Players</h3>
-          {allPool.length===0&&<p style={{color:C.muted,fontSize:13,marginBottom:8}}>Add players below.</p>}
-          {allPool.map(name=>{const ti=teams.slice(0,numTeams).findIndex(t=>t.members.includes(name));return(
-            <div key={name} style={{display:"flex",alignItems:"center",gap:8,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"10px 12px",marginBottom:8}}>
-              <span style={{flex:1,fontSize:14,fontWeight:700}}>{name}{name===myName?" (you)":""}</span>
-              <div style={{display:"flex",gap:6}}>{teams.slice(0,numTeams).map((t,i)=><button key={i} onClick={()=>assignTeam(name,i)} style={{width:34,height:34,borderRadius:8,border:`2px solid ${ti===i?TC[i]:C.ink}`,background:ti===i?TC[i]:C.white,color:ti===i?C.white:C.ink,fontSize:16,cursor:"pointer",fontWeight:700}}>{TE[i]}</button>)}</div>
-            </div>
-          )})}
-          <div style={{display:"flex",gap:8,marginTop:12}}><input style={{...inp,flex:1}} placeholder="Add new player…" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNew()}/><Btn primary onClick={addNew}>Add</Btn></div>
-          <div style={{marginTop:16}}>{teams.slice(0,numTeams).map((t,i)=><div key={i} style={{borderLeft:`4px solid ${TC[i]}`,paddingLeft:12,marginBottom:8}}><span style={{fontWeight:700,color:TC[i]}}>{TE[i]} {t.name}</span><span style={{color:C.muted,fontSize:12,marginLeft:8}}>{t.members.length?t.members.join(", "):"Empty"}</span></div>)}</div>
-        </div>
-      )}
-      <Btn full primary disabled={!canStart} onClick={()=>dispatch({type:"START_GAME",gameKey,players:teamMode?teams.slice(0,numTeams).map(t=>t.name):solo,cats:validCats,customName:custName,customEmoji:custEmoji,teamMode,teams:teamMode?teams.slice(0,numTeams):null,scoringType:isIndependent?"independent":"standard",maxScore:isIndependent?(parseInt(maxScoreInput)||10):null})}>Start Game →</Btn>
+      <div style={{display:"flex",gap:10,marginBottom:24}}>{[{v:false,l:"👤 Individual"},{v:true,l:"👥 Team Mode"}].map(({v,l})=><button key={String(v)} onClick={()=>setTeamMode(v)} style={{flex:1,padding:"14px 0",fontSize:14,fontWeight:700,background:teamMode===v?C.tomato:C.card,color:teamMode===v?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:12,cursor:"pointer",boxShadow:teamMode===v?`3px 3px 0 ${C.ink}`:"none"}}>{l}</button>)}</div>
+      {!teamMode&&(<div style={{...S.card,padding:16,marginBottom:24}}>
+        <h3 style={{...secHead,marginBottom:12}}>Select Players</h3>
+        {allPool.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>{allPool.map(n=>{const isMe=n===myName;return<button key={n} onClick={()=>toggleSolo(n)} style={{background:solo.includes(n)?C.tomato:C.white,border:`2px solid ${isMe?"#3498db":C.ink}`,color:solo.includes(n)?C.white:C.ink,borderRadius:20,padding:"7px 16px",fontSize:13,cursor:"pointer",fontWeight:700}}>{solo.includes(n)?"✓ ":""}{n}{isMe?" (you)":""}</button>})}</div>}
+        <div style={{display:"flex",gap:8}}><input style={{...inp,flex:1}} placeholder="Add new player…" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNew()}/><Btn primary onClick={addNew}>Add</Btn></div>
+      </div>)}
+      {teamMode&&(<div style={{...S.card,padding:16,marginBottom:24}}>
+        <h3 style={{...secHead,marginBottom:10}}>Number of Teams</h3>
+        <div style={{display:"flex",gap:8,marginBottom:20}}>{[2,3,4].map(n=><button key={n} onClick={()=>setNumTeams(n)} style={{flex:1,padding:"10px 0",fontSize:15,fontWeight:700,background:numTeams===n?C.tomato:C.white,color:numTeams===n?C.white:C.ink,border:`2px solid ${C.ink}`,borderRadius:10,cursor:"pointer"}}>{n} Teams</button>)}</div>
+        <h3 style={{...secHead,marginBottom:10}}>Team Names</h3>
+        {teams.slice(0,numTeams).map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:20}}>{TE[i]}</span><input style={{...inp,flex:1,borderColor:TC[i]}} value={t.name} onChange={e=>setTeams(prev=>prev.map((x,j)=>j===i?{...x,name:e.target.value}:x))}/></div>)}
+        <h3 style={{...secHead,marginTop:20,marginBottom:10}}>Assign Players</h3>
+        {allPool.length===0&&<p style={{color:C.muted,fontSize:13,marginBottom:8}}>Add players below.</p>}
+        {allPool.map(name=>{const ti=teams.slice(0,numTeams).findIndex(t=>t.members.includes(name));return(<div key={name} style={{display:"flex",alignItems:"center",gap:8,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,padding:"10px 12px",marginBottom:8}}><span style={{flex:1,fontSize:14,fontWeight:700}}>{name}{name===myName?" (you)":""}</span><div style={{display:"flex",gap:6}}>{teams.slice(0,numTeams).map((t,i)=><button key={i} onClick={()=>assignTeam(name,i)} style={{width:34,height:34,borderRadius:8,border:`2px solid ${ti===i?TC[i]:C.ink}`,background:ti===i?TC[i]:C.white,color:ti===i?C.white:C.ink,fontSize:16,cursor:"pointer",fontWeight:700}}>{TE[i]}</button>)}</div></div>)})}
+        <div style={{display:"flex",gap:8,marginTop:12}}><input style={{...inp,flex:1}} placeholder="Add new player…" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addNew()}/><Btn primary onClick={addNew}>Add</Btn></div>
+        <div style={{marginTop:16}}>{teams.slice(0,numTeams).map((t,i)=><div key={i} style={{borderLeft:`4px solid ${TC[i]}`,paddingLeft:12,marginBottom:8}}><span style={{fontWeight:700,color:TC[i]}}>{TE[i]} {t.name}</span><span style={{color:C.muted,fontSize:12,marginLeft:8}}>{t.members.length?t.members.join(", "):"Empty"}</span></div>)}</div>
+      </div>)}
+      <Btn full primary disabled={!canStart} onClick={()=>dispatch({type:"START_GAME",gameKey,players:teamMode?teams.slice(0,numTeams).map(t=>t.name):solo,cats:validCats,customName:custName,customEmoji:custEmoji,teamMode,teams:teamMode?teams.slice(0,numTeams):null,scoringType:isIndependent?"independent":"standard",maxScore:isIndependent?(parseInt(maxScoreInput)||10):null,lowWins:isIndependent?false:lowWins})}>Start Game →</Btn>
       {deleteTarget&&(()=>{const hasHist=state.history.some(g=>{const gk=g.gameKey==="custom"?g.gameName:g.gameKey;return gk===deleteTarget});const tgt=allGames[deleteTarget];return(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}} onClick={()=>setDeleteTarget(null)}>
           <div style={{...S.card,padding:24,maxWidth:340,width:"100%"}} onClick={e=>e.stopPropagation()}>
@@ -573,55 +377,64 @@ function SetupScreen({state,dispatch}){
             {hasHist?<p style={{color:C.tomato,fontSize:13,marginBottom:16,textAlign:"center",fontWeight:700,lineHeight:1.5}}>⚠️ Past scores still count on the leaderboard.</p>:<p style={{color:C.muted,fontSize:13,marginBottom:16,textAlign:"center"}}>Removes from everyone's list.</p>}
             <div style={{display:"flex",gap:10}}><Btn full onClick={()=>setDeleteTarget(null)}>Cancel</Btn><Btn full onClick={()=>{dispatch({type:"DELETE_TEMPLATE",key:deleteTarget});setDeleteTarget(null);if(gameKey===deleteTarget)setGameKey(null)}} style={{background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>Delete</Btn></div>
           </div>
-        </div>
-      )})()}
+        </div>)})()}
     </div>
   );
 }
 
-/* ═══ Game ═══ */
+/* ═══ Game Screen (Live Score Overview) ═══ */
 function GameScreen({state,dispatch,finishGame}){
   const game=state.current;
   const[newCat,setNewCat]=useState("");const[showAdd,setShowAdd]=useState(false);
-  const[dumbMode,setDumbMode]=useState(false);const[catIdx,setCatIdx]=useState(0);
+  const[capturing,setCapturing]=useState(false);const[catIdx,setCatIdx]=useState(0);
   if(!game)return null;
   const isInd=game.scoringType==="independent";
+  const lowW=!!game.lowWins;
   const playerTotals=game.players.map(calcTotal);
-  if(dumbMode)return<ClickerMode game={game} dispatch={dispatch} finishGame={finishGame} catIdx={catIdx} setCatIdx={setCatIdx} onExit={()=>setDumbMode(false)}/>;
-  const leaderboardRows=game.teamMode&&game.teams
-    ?game.teams.map(team=>{const ms=game.players.filter(p=>team.members.includes(p.name));const total=ms.reduce((s,p)=>s+calcTotal(p),0);return{label:team.name,sub:team.members.join(", "),total}}).sort((a,b)=>b.total-a.total)
-    :[...game.players].map((p,i)=>({label:p.name,sub:null,total:playerTotals[i]})).sort((a,b)=>b.total-a.total);
-  const maxLT=Math.max(...leaderboardRows.map(r=>r.total),1);
+
+  if(capturing) return <CaptureScores game={game} dispatch={dispatch} finishGame={finishGame} catIdx={catIdx} setCatIdx={setCatIdx} onBack={()=>setCapturing(false)} lowWins={lowW}/>;
+
+  const sortFn=lowW?(a,b)=>a.total-b.total:(a,b)=>b.total-a.total;
+  const rows=game.teamMode&&game.teams
+    ?game.teams.map(team=>{const ms=game.players.filter(p=>team.members.includes(p.name));return{label:team.name,sub:team.members.join(", "),total:ms.reduce((s,p)=>s+calcTotal(p),0)}}).sort(sortFn)
+    :[...game.players].map((p,i)=>({label:p.name,sub:null,total:playerTotals[i]})).sort(sortFn);
+  const bestTotal=rows[0]?.total??0;
+  const maxLT=Math.max(...rows.map(r=>r.total),1);
+
   return(
     <div style={{padding:"20px 20px 120px"}}>
       <TopBar title={`${game.emoji} ${game.gameName}`} onBack={()=>dispatch({type:"GO",screen:"home"})}/>
-      {isInd&&<div style={{background:C.lime,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 12px",marginBottom:16,fontSize:12,color:C.muted,textAlign:"center"}}>⭐ Independent Scoring — Rate each player out of {game.maxScore}</div>}
+      {lowW&&<div style={{background:C.lime,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:C.muted,textAlign:"center"}}>⬇️ Lowest score wins</div>}
+      {isInd&&<div style={{background:C.lime,border:`2px solid ${C.ink}`,borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:C.muted,textAlign:"center"}}>⭐ Independent Scoring — Rate out of {game.maxScore}</div>}
+
       <div style={{...S.limeCard,padding:16,marginBottom:16}}>
         <div style={{fontSize:10,color:C.muted,textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>Live Scores</div>
-        {leaderboardRows.map(({label,sub,total},ri)=>{const tc=game.teamMode&&game.teams?TC[game.teams.findIndex(t=>t.name===label)]:null;return(<div key={label} style={{marginBottom:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-            <span style={{fontWeight:700}}>{ri===0?"🏆 ":""}<span style={{color:tc||C.ink}}>{label}</span>{sub&&<span style={{fontSize:11,color:C.muted,marginLeft:6}}>({sub})</span>}</span>
-            <span style={{fontWeight:900,color:ri===0?C.tomato:C.ink}}>{isInd?`${total}/${game.maxScore}`:total}</span>
-          </div>
-          <div style={{height:8,background:"rgba(0,0,0,0.15)",borderRadius:4,overflow:"hidden",border:`1px solid ${C.ink}`}}><div style={{height:"100%",width:`${(total/(isInd?game.maxScore:maxLT))*100}%`,background:tc||(ri===0?C.tomato:C.ink),borderRadius:4,transition:"width 0.3s"}}/></div>
-        </div>)})}
+        {rows.map(({label,sub,total})=>{
+          const tc=game.teamMode&&game.teams?TC[game.teams.findIndex(t=>t.name===label)]:null;
+          const isLeader=total===bestTotal;
+          return(<div key={label} style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontWeight:700}}>{isLeader?"🏆 ":""}<span style={{color:tc||C.ink}}>{label}</span>{sub&&<span style={{fontSize:11,color:C.muted,marginLeft:6}}>({sub})</span>}</span>
+              <span style={{fontWeight:900,color:isLeader?C.tomato:C.ink}}>{isInd?`${total}/${game.maxScore}`:total}</span>
+            </div>
+            <div style={{height:8,background:"rgba(0,0,0,0.15)",borderRadius:4,overflow:"hidden",border:`1px solid ${C.ink}`}}>
+              <div style={{height:"100%",width:`${maxLT>0?(total/maxLT)*100:0}%`,background:tc||(isLeader?C.tomato:C.ink),borderRadius:4,transition:"width 0.3s"}}/>
+            </div>
+          </div>);
+        })}
       </div>
-      <button onClick={()=>setDumbMode(true)} style={{width:"100%",marginBottom:16,padding:"14px",fontSize:15,fontWeight:700,borderRadius:14,border:`2px solid ${C.ink}`,cursor:"pointer",background:C.card,color:C.ink,boxShadow:`3px 3px 0 ${C.ink}`}}>👆 Clicker Mode</button>
+
+      <button onClick={()=>setCapturing(true)} style={{width:"100%",marginBottom:16,padding:"14px",fontSize:15,fontWeight:900,borderRadius:14,border:`2px solid ${C.ink}`,cursor:"pointer",background:C.tomato,color:C.white,boxShadow:`3px 3px 0 ${C.ink}`}}>📝 Capture Scores</button>
+
       <div style={{...S.card,overflow:"hidden",padding:0,marginBottom:8}}><div style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
           <thead><tr style={{background:C.ink}}>
-            <th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontWeight:700,fontSize:12,letterSpacing:1}}>{isInd?"PLAYER":"CATEGORY"}</th>
-            {isInd?<th style={{padding:"10px 8px",fontSize:12,textAlign:"center",color:C.white}}>Score /{game.maxScore}</th>
-            :game.players.map(p=><th key={p.name} style={{padding:"10px 8px",fontSize:12,textAlign:"center",minWidth:60,color:C.white}}>{p.name}{game.teamMode&&p.team?<div style={{fontSize:9,opacity:0.7}}>{p.team}</div>:null}</th>)}
+            <th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontWeight:700,fontSize:12}}>{isInd?"PLAYER":"CATEGORY"}</th>
+            {isInd?<th style={{padding:"10px 8px",fontSize:12,textAlign:"center",color:C.white}}>/{game.maxScore}</th>:game.players.map(p=><th key={p.name} style={{padding:"10px 8px",fontSize:12,textAlign:"center",minWidth:60,color:C.white}}>{p.name}</th>)}
           </tr></thead>
           <tbody>
-            {isInd?game.players.map((p,pi)=><tr key={p.name} style={{background:pi%2===0?C.white:C.card}}>
-              <td style={{padding:"8px 12px",color:C.ink,fontSize:13,fontWeight:700}}>{p.name}</td>
-              <td style={{padding:4,textAlign:"center"}}><input type="number" inputMode="decimal" step="any" min="0" max={game.maxScore} style={{width:74,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,color:C.ink,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores.Score} onChange={e=>dispatch({type:"SET_SCORE",pi,cat:"Score",val:e.target.value})}/></td>
-            </tr>):game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}>
-              <td style={{padding:"8px 12px",color:C.ink,fontSize:13,fontWeight:700}}>{cat}</td>
-              {game.players.map((p,pi)=><td key={p.name} style={{padding:4,textAlign:"center"}}><input type="number" inputMode="numeric" style={{width:54,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,color:C.ink,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores[cat]} onChange={e=>dispatch({type:"SET_SCORE",pi,cat,val:e.target.value})}/></td>)}
-            </tr>)}
+            {isInd?game.players.map((p,pi)=><tr key={p.name} style={{background:pi%2===0?C.white:C.card}}><td style={{padding:"8px 12px",fontWeight:700}}>{p.name}</td><td style={{padding:4,textAlign:"center"}}><input type="number" inputMode="decimal" step="any" style={{width:74,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores.Score} onChange={e=>dispatch({type:"SET_SCORE",pi,cat:"Score",val:e.target.value})}/></td></tr>)
+            :game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}><td style={{padding:"8px 12px",fontWeight:700}}>{cat}</td>{game.players.map((p,pi)=><td key={p.name} style={{padding:4,textAlign:"center"}}><input type="number" inputMode="numeric" style={{width:54,background:C.white,border:`2px solid ${C.ink}`,borderRadius:8,textAlign:"center",padding:"8px 4px",fontSize:15,fontWeight:700}} value={p.scores[cat]} onChange={e=>dispatch({type:"SET_SCORE",pi,cat,val:e.target.value})}/></td>)}</tr>)}
             {!isInd&&<tr style={{background:C.tomato}}><td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>{playerTotals.map((t,i)=><td key={i} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{t}</td>)}</tr>}
           </tbody>
         </table>
@@ -632,12 +445,14 @@ function GameScreen({state,dispatch,finishGame}){
   );
 }
 
-/* ═══ Clicker ═══ */
-function ClickerMode({game,dispatch,finishGame,catIdx,setCatIdx,onExit}){
-  const isInd=game.scoringType==="independent";const cat=game.categories[catIdx]||game.categories[0];const maxVal=isInd?(game.maxScore||10):Infinity;
+/* ═══ Capture Scores ═══ */
+function CaptureScores({game,dispatch,finishGame,catIdx,setCatIdx,onBack,lowWins}){
+  const isInd=game.scoringType==="independent";
+  const cat=game.categories[catIdx]||game.categories[0];
+  const maxVal=isInd?(game.maxScore||50):Infinity;
   return(
     <div style={{padding:"0 0 80px"}}>
-      <div onClick={onExit} style={{background:C.ink,color:C.white,textAlign:"center",padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer"}}>🚪 Exit Clicker Mode</div>
+      <div onClick={onBack} style={{background:C.lime,color:C.ink,textAlign:"center",padding:"14px",fontSize:15,fontWeight:900,cursor:"pointer",borderBottom:`2px solid ${C.ink}`}}>🏆 Live Score Overview</div>
       {game.categories.length>1&&<div style={{textAlign:"center",padding:"16px 20px 8px"}}>
         <div style={{fontSize:11,color:C.muted,marginBottom:6,textTransform:"uppercase",letterSpacing:2}}>Scoring Category</div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12}}>
@@ -646,23 +461,23 @@ function ClickerMode({game,dispatch,finishGame,catIdx,setCatIdx,onExit}){
           <button onClick={()=>setCatIdx(i=>(i+1)%game.categories.length)} style={{width:40,height:40,borderRadius:20,border:`2px solid ${C.ink}`,background:C.card,fontSize:18,cursor:"pointer",fontWeight:900}}>▶</button>
         </div>
       </div>}
-      <div style={{display:"grid",gridTemplateColumns:game.players.length===1?"1fr":"1fr 1fr",gap:12,padding:"12px 16px"}}>
-        {game.players.map((p,pi)=>{const ci=game.teamMode&&game.teams?game.teams.findIndex(t=>t.members.includes(p.name)):pi;const color=TC[ci%TC.length];const light=TCL[ci%TCL.length];const score=parseFloat(p.scores[cat])||0;
-          return(<div key={p.name} style={{borderRadius:16,overflow:"hidden",border:`2px solid ${C.ink}`,boxShadow:`3px 3px 0 ${C.ink}`}}>
-            <div style={{background:color,padding:"14px 12px",display:"flex",flexDirection:"column",alignItems:"center",minHeight:140,justifyContent:"center"}}>
-              <div style={{fontSize:12,color:"rgba(255,255,255,0.8)",fontWeight:700,marginBottom:2}}>{p.name}</div>
-              {game.teamMode&&p.team&&<div style={{fontSize:10,color:"rgba(255,255,255,0.6)",marginBottom:4}}>{p.team}</div>}
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginBottom:6}}>{cat}</div>
-              <div style={{fontSize:36,fontWeight:900,color:C.white,fontFamily:"Georgia,serif",marginBottom:10}}>{isInd?`${score}/${maxVal}`:score}</div>
-              <button onClick={()=>{if(score<maxVal)dispatch({type:"SET_SCORE",pi,cat,val:String(Math.min(maxVal,score+1))})}} style={{width:56,height:56,borderRadius:28,border:"none",background:"rgba(255,255,255,0.3)",color:C.white,fontSize:32,fontWeight:900,cursor:score>=maxVal?"not-allowed":"pointer",opacity:score>=maxVal?0.4:1}}>+</button>
+      {lowWins&&<div style={{textAlign:"center",padding:"8px 16px",fontSize:11,color:C.muted}}>⬇️ Lowest score wins</div>}
+      <div style={{padding:"12px 16px"}}>
+        {game.players.map((p,pi)=>{
+          const ci=game.teamMode&&game.teams?game.teams.findIndex(t=>t.members.includes(p.name)):pi;
+          const dark=TC[ci%TC.length];const light=TCL[ci%TCL.length];
+          const score=parseFloat(p.scores[cat])||0;
+          return(
+            <div key={p.name} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:12,marginBottom:8,background:pi%2===0?C.card:C.white,border:`2px solid ${C.ink}`}}>
+              <div style={{flex:1,minWidth:0}}><div style={{fontWeight:900,fontSize:16,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>{game.teamMode&&p.team&&<div style={{fontSize:10,color:C.muted}}>{p.team}</div>}</div>
+              <button onClick={()=>{if(score>0)dispatch({type:"SET_SCORE",pi,cat,val:String(Math.max(0,score-1))})}} style={{width:44,height:44,borderRadius:10,border:`2px solid ${C.ink}`,background:light,color:C.ink,fontSize:22,fontWeight:900,cursor:score<=0?"not-allowed":"pointer",opacity:score<=0?0.4:1,flexShrink:0}}>−</button>
+              <button onClick={()=>{if(score<maxVal)dispatch({type:"SET_SCORE",pi,cat,val:String(Math.min(maxVal,score+1))})}} style={{width:44,height:44,borderRadius:10,border:`2px solid ${C.ink}`,background:dark,color:C.white,fontSize:22,fontWeight:900,cursor:score>=maxVal?"not-allowed":"pointer",opacity:score>=maxVal?0.4:1,flexShrink:0}}>+</button>
+              <input type="number" inputMode="decimal" step="any" value={p.scores[cat]} onChange={e=>dispatch({type:"SET_SCORE",pi,cat,val:e.target.value})} style={{width:64,background:C.white,border:`2px solid ${C.ink}`,borderRadius:10,color:C.ink,textAlign:"center",padding:"10px 4px",fontSize:16,fontWeight:900,flexShrink:0}}/>
             </div>
-            <div style={{background:light,padding:"10px 12px",display:"flex",justifyContent:"center"}}>
-              <button onClick={()=>{if(score>0)dispatch({type:"SET_SCORE",pi,cat,val:String(Math.max(0,score-1))})}} style={{width:40,height:40,borderRadius:20,border:`2px solid ${C.ink}`,background:C.white,color:C.ink,fontSize:22,fontWeight:900,cursor:score<=0?"not-allowed":"pointer",opacity:score<=0?0.4:1}}>−</button>
-            </div>
-          </div>);
+          );
         })}
       </div>
-      <div style={{padding:"16px 16px",position:"fixed",bottom:56,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.card,borderTop:`3px solid ${C.ink}`}}><Btn full primary onClick={()=>{onExit();finishGame()}}>✅ Finish &amp; Save Game</Btn></div>
+      <div style={{padding:"16px",position:"fixed",bottom:56,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.card,borderTop:`3px solid ${C.ink}`}}><Btn full primary onClick={()=>{onBack();finishGame()}}>✅ Finish &amp; Save Game</Btn></div>
     </div>
   );
 }
@@ -688,15 +503,17 @@ function LeaderboardScreen({state}){
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>🏆 Leaderboard</h2>
       <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:12,marginBottom:20}}>{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flexShrink:0,background:tab===t.id?C.tomato:C.card,border:`2px solid ${C.ink}`,color:tab===t.id?C.white:C.ink,borderRadius:20,padding:"8px 14px",fontSize:12,cursor:"pointer",fontWeight:700,boxShadow:tab===t.id?`2px 2px 0 ${C.ink}`:"none"}}>{t.icon} {t.label}</button>)}</div>
       {tab!=="independent"&&sorted.length>0&&<>
-        {sorted.length>=3&&<div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:24,height:130}}>
-          {[sorted[1],sorted[0],sorted[2]].map((p,ri)=>{const h=[90,130,75][ri];const pidx=[1,0,2][ri];const bgs=[C.bg,C.lime,C.card];return(
-            <div key={p.key||p.name} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
+        {sorted.length>=3&&(()=>{
+          const po=[sorted[1],sorted[0],sorted[2]];const pr=[ranks[1],ranks[0],ranks[2]];
+          const baseH={1:130,2:90,3:75};const heights=pr.map(r=>baseH[r]||60);const bgs=[C.bg,C.lime,C.card];
+          return(<div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:24,height:150}}>
+            {po.map((p,ri)=><div key={p.key||p.name} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-end"}}>
               <div style={{fontSize:12,color:C.ink,marginBottom:2,textAlign:"center",fontWeight:700}}>{p.name}</div>
               <div style={{fontSize:12,color:C.tomato,marginBottom:4,fontWeight:900}}>{cur.val(p)}</div>
-              <div style={{width:"100%",height:h,background:bgs[ri],border:`2px solid ${C.ink}`,borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>{medal(ranks[pidx])}</div>
-            </div>
-          )})}
-        </div>}
+              <div style={{width:"100%",height:heights[ri],background:bgs[ri],border:`2px solid ${C.ink}`,borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>{medal(pr[ri])}</div>
+            </div>)}
+          </div>);
+        })()}
         <h3 style={{...secHead,marginBottom:12}}>{cur.sub}</h3>
         {sorted.map((p,i)=><div key={p.key||p.name} style={{...S.card,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12,background:ranks[i]===1?C.lime:C.card}}>
           <span style={{fontSize:22,width:28,textAlign:"center"}}>{medal(ranks[i])}</span>
@@ -721,168 +538,64 @@ function LeaderboardScreen({state}){
 /* ═══ History ═══ */
 function HistoryScreen({state,dispatch}){
   const fu=state.familyUsers||{};
-  return(
-    <div style={{padding:"20px 20px 80px"}}>
-      <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>📋 History</h2>
-      {!state.history.length?<p style={{color:C.muted,textAlign:"center",marginTop:60}}>No games yet!</p>
-      :state.history.map(g=>{const w=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];return(
-        <div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
-          <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span><span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span></div>
-          <div style={{marginTop:6,color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {rname(w,fu)} — {g.scoringType==="independent"?`${calcTotal(w)}/${g.maxScore}`:calcTotal(w)+" pts"}</div>
-          <div style={{marginTop:4,color:C.muted,fontSize:11}}>{g.players.map(p=>rname(p,fu)).join(", ")}</div>
-        </div>
-      )})}
-    </div>
-  );
+  return(<div style={{padding:"20px 20px 80px"}}>
+    <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>📋 History</h2>
+    {!state.history.length?<p style={{color:C.muted,textAlign:"center",marginTop:60}}>No games yet!</p>
+    :state.history.map(g=>{const w=getWinner(g.players,g);return(
+      <div key={g.id} onClick={()=>dispatch({type:"GO",screen:"historyDetail",id:g.id})} style={{...S.card,padding:"14px 16px",marginBottom:10,cursor:"pointer"}}>
+        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontFamily:"Georgia,serif",fontWeight:700}}>{g.emoji||"🎲"} {g.gameName||"Game"}</span><span style={{color:C.muted,fontSize:11}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()}</span></div>
+        <div style={{marginTop:6,color:C.tomato,fontSize:13,fontWeight:700}}>🏆 {rname(w,fu)} — {g.scoringType==="independent"?`${calcTotal(w)}/${g.maxScore}`:calcTotal(w)+" pts"}</div>
+        <div style={{marginTop:4,color:C.muted,fontSize:11}}>{g.players.map(p=>rname(p,fu)).join(", ")}</div>
+      </div>)})}
+  </div>);
 }
 function HistoryDetail({state,dispatch}){
-  const fu=state.familyUsers||{};
-  const game=state.history.find(g=>g.id===state.detailId);
+  const fu=state.familyUsers||{};const game=state.history.find(g=>g.id===state.detailId);
   if(!game)return<div style={{padding:"20px 20px 80px"}}><TopBar title="Game Detail" onBack={()=>dispatch({type:"GO",screen:"history"})}/><p style={{color:C.muted,textAlign:"center",marginTop:60}}>Game not found.</p></div>;
   const isInd=game.scoringType==="independent";const dn=game.gameName||"Game";const de=game.emoji||"🎲";
   const canDelete=!state.user?.guest&&game.players.some(p=>p.userId&&p.userId===state.user?.userId);
-  const totals=game.players.map(calcTotal);const sorted=[...game.players].map((p,i)=>({p,t:totals[i]})).sort((a,b)=>b.t-a.t);
-  return(
-    <div style={{padding:"20px 20px 80px"}}>
-      <TopBar title={`${de} ${dn}`} onBack={()=>dispatch({type:"GO",screen:"history"})}/>
-      <p style={{color:C.muted,fontSize:12,marginBottom:16}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString("en-GB",{dateStyle:"long"})}</p>
-      <div style={{...S.limeCard,padding:16,marginBottom:20}}>{sorted.map(({p,t},ri)=><div key={rname(p,fu)} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:ri<sorted.length-1?`1px solid ${C.ink}`:"none"}}><span style={{fontWeight:700}}>{ri===0?"🏆 ":`${ri+1}. `}{rname(p,fu)}</span><span style={{color:C.tomato,fontWeight:900}}>{isInd?`${t}/${game.maxScore}`:t+" pts"}</span></div>)}</div>
-      {!isInd&&<div style={{...S.card,overflow:"hidden",padding:0,marginBottom:20}}><div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
-          <thead><tr style={{background:C.ink}}><th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontSize:11}}>CATEGORY</th>{game.players.map(p=><th key={rname(p,fu)} style={{padding:"10px 8px",color:C.white,fontSize:11,textAlign:"center"}}>{rname(p,fu)}</th>)}</tr></thead>
-          <tbody>{game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}><td style={{padding:"8px 12px",color:C.ink,fontWeight:700}}>{cat}</td>{game.players.map(p=><td key={rname(p,fu)} style={{textAlign:"center",padding:"8px 4px",fontWeight:700}}>{p.scores[cat]||0}</td>)}</tr>)}
-            <tr style={{background:C.tomato}}><td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>{totals.map((t,i)=><td key={i} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{t}</td>)}</tr>
-          </tbody>
-        </table>
-      </div></div>}
-      {canDelete&&<Btn full onClick={()=>{if(window.confirm("Delete this game?"))dispatch({type:"DELETE_HISTORY",id:game.id})}} style={{marginTop:4,background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>}
-    </div>
-  );
+  const totals=game.players.map(calcTotal);const sorted=[...game.players].map((p,i)=>({p,t:totals[i]})).sort((a,b)=>game.lowWins?(a.t-b.t):(b.t-a.t));
+  return(<div style={{padding:"20px 20px 80px"}}>
+    <TopBar title={`${de} ${dn}`} onBack={()=>dispatch({type:"GO",screen:"history"})}/>
+    <p style={{color:C.muted,fontSize:12,marginBottom:16}}>{new Date(game.finishedAt||game.startedAt).toLocaleDateString("en-GB",{dateStyle:"long"})}{game.lowWins&&" · ⬇️ Lowest wins"}</p>
+    <div style={{...S.limeCard,padding:16,marginBottom:20}}>{sorted.map(({p,t},ri)=><div key={rname(p,fu)} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:ri<sorted.length-1?`1px solid ${C.ink}`:"none"}}><span style={{fontWeight:700}}>{ri===0?"🏆 ":`${ri+1}. `}{rname(p,fu)}</span><span style={{color:C.tomato,fontWeight:900}}>{isInd?`${t}/${game.maxScore}`:t+" pts"}</span></div>)}</div>
+    {!isInd&&<div style={{...S.card,overflow:"hidden",padding:0,marginBottom:20}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
+      <thead><tr style={{background:C.ink}}><th style={{textAlign:"left",padding:"10px 12px",color:C.white,fontSize:11}}>CATEGORY</th>{game.players.map(p=><th key={rname(p,fu)} style={{padding:"10px 8px",color:C.white,fontSize:11,textAlign:"center"}}>{rname(p,fu)}</th>)}</tr></thead>
+      <tbody>{game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}><td style={{padding:"8px 12px",fontWeight:700}}>{cat}</td>{game.players.map(p=><td key={rname(p,fu)} style={{textAlign:"center",padding:"8px 4px",fontWeight:700}}>{p.scores[cat]||0}</td>)}</tr>)}
+      <tr style={{background:C.tomato}}><td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>{totals.map((t,i)=><td key={i} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{t}</td>)}</tr></tbody>
+    </table></div></div>}
+    {canDelete&&<Btn full onClick={()=>{if(window.confirm("Delete this game?"))dispatch({type:"DELETE_HISTORY",id:game.id})}} style={{marginTop:4,background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>}
+  </div>);
 }
 
-/* ═══ Family (Profile + Families + Claiming) ═══ */
+/* ═══ Family ═══ */
 function FamilyScreen({state,dispatch}){
   const fu=state.familyUsers||{};
-  const myDname=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:null;
+  const myDname=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:(state.user?.displayName||null);
   const[pw,setPw]=useState("");const[loading,setLoading]=useState(false);const[msg,setMsg]=useState("");
-  const[editName,setEditName]=useState(false);const[newDname,setNewDname]=useState(myDname||"");
-  const[nameErr,setNameErr]=useState("");
+  const[editName,setEditName]=useState(false);const[newDname,setNewDname]=useState(myDname||"");const[nameErr,setNameErr]=useState("");
   const[claimTarget,setClaimTarget]=useState(null);const[claimSel,setClaimSel]=useState({});
-
-  // Unclaimed names
-  const unclaimed={};
-  state.history.forEach(g=>{g.players.forEach(p=>{if(!p.userId){if(!unclaimed[p.name])unclaimed[p.name]={name:p.name,games:[]};unclaimed[p.name].games.push(g)}})});
+  const unclaimed={};state.history.forEach(g=>{g.players.forEach(p=>{if(!p.userId){if(!unclaimed[p.name])unclaimed[p.name]={name:p.name,games:[]};unclaimed[p.name].games.push(g)}})});
   const registeredNames=new Set(Object.values(fu).map(u=>u.displayName));
   const claimable=Object.values(unclaimed).filter(u=>!registeredNames.has(u.name));
-
-  async function joinFamily(){
-    if(!pw.trim())return;setLoading(true);setMsg("");
-    const code=pw.trim().toLowerCase().replace(/\s+/g,"-");
-    const games=await dbLoad(code);
-    if(games===null)await dbSave(code,[]);
-    dispatch({type:"JOIN_FAMILY",family:code});
-    // Register self in family users
-    const remoteFu=(await dbLoad(code+"_users"))||{};
-    if(state.user&&!state.user.guest&&!remoteFu[state.user.userId]){
-      // Use existing display name from another family, or username
-      const dn=myDname||state.user.userId;
-      remoteFu[state.user.userId]={displayName:dn};
-      await dbSave(code+"_users",remoteFu);
-    }
-    dispatch({type:"SET_FAMILY_USERS",familyUsers:remoteFu});
-    if(games)dispatch({type:"SYNC_HISTORY",history:games});
-    setMsg(`✅ Joined "${code}"`);setLoading(false);setPw("");
-  }
-
-  async function doRename(){
-    const n=newDname.trim();
-    if(!n){setNameErr("Name required");return}
-    // Check uniqueness: no other registered user in this family, and not an unclaimed name in history
-    const otherRegistered=Object.entries(fu).filter(([uid])=>uid!==state.user.userId).map(([,u])=>u.displayName);
-    if(otherRegistered.includes(n)){setNameErr("Name already taken in this family");return}
-    setNameErr("");
-    dispatch({type:"RENAME_USER",userId:state.user.userId,newName:n});
-    // Sync to supabase
-    if(state.family&&sb){
-      const h=state.history.map(g=>({...g,players:g.players.map(p=>p.userId===state.user.userId?{...p,name:n}:p)}));
-      await dbSave(state.family,h);
-      const rfu=(await dbLoad(state.family+"_users"))||{};
-      rfu[state.user.userId]={displayName:n};
-      await dbSave(state.family+"_users",rfu);
-    }
-    setEditName(false);
-  }
-
+  async function joinFamily(){if(!pw.trim())return;setLoading(true);setMsg("");const code=pw.trim().toLowerCase().replace(/\s+/g,"-");const games=await dbLoad(code);if(games===null)await dbSave(code,[]);dispatch({type:"JOIN_FAMILY",family:code});const remoteFu=(await dbLoad(code+"_users"))||{};if(state.user&&!state.user.guest&&!remoteFu[state.user.userId]){const dn=state.user.displayName||state.user.userId;remoteFu[state.user.userId]={displayName:dn};await dbSave(code+"_users",remoteFu)}dispatch({type:"SET_FAMILY_USERS",familyUsers:remoteFu});if(games)dispatch({type:"SYNC_HISTORY",history:games});setMsg(`✅ Joined "${code}"`);setLoading(false);setPw("")}
+  async function doRename(){const n=newDname.trim();if(!n){setNameErr("Name required");return}const other=Object.entries(fu).filter(([uid])=>uid!==state.user.userId).map(([,u])=>u.displayName);if(other.includes(n)){setNameErr("Name already taken");return}setNameErr("");dispatch({type:"RENAME_USER",userId:state.user.userId,newName:n});if(state.family&&sb){const h=state.history.map(g=>({...g,players:g.players.map(p=>p.userId===state.user.userId?{...p,name:n}:p)}));await dbSave(state.family,h);const rfu=(await dbLoad(state.family+"_users"))||{};rfu[state.user.userId]={displayName:n};await dbSave(state.family+"_users",rfu);await dbSaveUser(state.user.userId,{pin:state.user.pin,displayName:n,families:state.user.families||[],createdAt:state.user.createdAt})}setEditName(false)}
   function startClaim(c){setClaimTarget(c);const sel={};c.games.forEach(g=>{sel[g.id]=true});setClaimSel(sel)}
-  async function doClaim(){
-    if(!claimTarget||!state.user)return;
-    const ids=Object.keys(claimSel).filter(k=>claimSel[k]).map(Number);
-    const dn=myDname||state.user.userId;
-    dispatch({type:"CLAIM_GAMES",gameIds:ids,oldName:claimTarget.name,userId:state.user.userId,newName:dn});
-    // Sync
-    if(state.family&&sb){
-      const h=state.history.map(g=>{if(!ids.includes(g.id))return g;return{...g,players:g.players.map(p=>p.name===claimTarget.name&&!p.userId?{...p,userId:state.user.userId,name:dn}:p)}});
-      await dbSave(state.family,h);
-    }
-    setClaimTarget(null);
-  }
-
+  async function doClaim(){if(!claimTarget||!state.user)return;const ids=Object.keys(claimSel).filter(k=>claimSel[k]).map(Number);const dn=myDname||state.user.userId;dispatch({type:"CLAIM_GAMES",gameIds:ids,oldName:claimTarget.name,userId:state.user.userId,newName:dn});if(state.family&&sb){const h=state.history.map(g=>{if(!ids.includes(g.id))return g;return{...g,players:g.players.map(p=>p.name===claimTarget.name&&!p.userId?{...p,userId:state.user.userId,name:dn}:p)}});await dbSave(state.family,h)}setClaimTarget(null)}
   return(
     <div style={{padding:"20px 20px 80px"}}>
       <h2 style={{fontFamily:"Georgia,serif",fontWeight:900,color:C.ink,marginBottom:16}}>👨‍👩‍👧 Family</h2>
-
-      {/* Profile Card */}
-      {state.user&&!state.user.guest&&(
-        <div style={{...S.card,padding:20,marginBottom:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-            <div>
-              <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2}}>Your Profile</div>
-              <div style={{fontSize:20,fontWeight:900,fontFamily:"Georgia,serif",marginTop:4}}>{myDname||state.user.userId}</div>
-              <div style={{fontSize:12,color:C.muted}}>@{state.user.userId}</div>
-            </div>
-            <div style={{fontSize:36}}>👤</div>
-          </div>
-          {editName?(
-            <div>
-              <input style={{...inp,marginBottom:8}} value={newDname} onChange={e=>{setNewDname(e.target.value);setNameErr("")}}/>
-              {nameErr&&<div style={{color:C.tomato,fontSize:12,fontWeight:700,marginBottom:8}}>{nameErr}</div>}
-              <div style={{display:"flex",gap:8}}><Btn onClick={()=>setEditName(false)}>Cancel</Btn><Btn primary onClick={doRename}>Save</Btn></div>
-            </div>
-          ):(
-            <Btn onClick={()=>{setEditName(true);setNewDname(myDname||"")}}>✏️ Change Display Name</Btn>
-          )}
-          <div style={{marginTop:12}}><span onClick={()=>{if(window.confirm("Log out?"))dispatch({type:"LOGOUT"})}} style={{color:"#c0392b",fontSize:13,cursor:"pointer",fontWeight:700}}>Log out</span></div>
-        </div>
-      )}
-
-      {/* Guest prompt */}
-      {state.user?.guest&&(
-        <div style={{...S.limeCard,padding:20,marginBottom:20,textAlign:"center"}}>
-          <div style={{fontSize:32,marginBottom:8}}>👤</div>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Playing as Guest</div>
-          <p style={{color:C.muted,fontSize:12,marginBottom:12}}>Create an account to edit your display name, claim games, and sync across devices.</p>
-          <Btn primary onClick={()=>dispatch({type:"LOGOUT"})}>Create Account</Btn>
-        </div>
-      )}
-
-      {/* Your Families */}
-      {state.user&&!state.user.guest&&state.user.families?.length>0&&(
-        <div style={{marginBottom:20}}>
-          <h3 style={{...secHead,color:C.card}}>Your Families</h3>
-          {state.user.families.map(f=>(
-            <div key={f} style={{...S.card,padding:"12px 16px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between",background:f===state.family?C.lime:C.card}}>
-              <div onClick={()=>{if(f!==state.family&&!state.current)dispatch({type:"SWITCH_FAMILY",family:f})}} style={{cursor:f!==state.family&&!state.current?"pointer":"default",flex:1}}>
-                <span style={{fontWeight:700}}>{f}</span>
-                {f===state.family&&<span style={{fontSize:11,color:C.muted,marginLeft:8}}>· active</span>}
-              </div>
-              <span onClick={()=>{if(window.confirm(`Leave "${f}"?`))dispatch({type:"LEAVE_FAMILY",family:f})}} style={{color:"#c0392b",fontSize:12,cursor:"pointer",fontWeight:700}}>Leave</span>
-            </div>
-          ))}
-          {state.current&&<p style={{color:C.card,fontSize:11,marginTop:4}}>Finish your current game before switching families.</p>}
-        </div>
-      )}
-
-      {/* Join Family */}
+      {state.user&&!state.user.guest&&(<div style={{...S.card,padding:20,marginBottom:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}><div><div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:2}}>Your Profile</div><div style={{fontSize:20,fontWeight:900,fontFamily:"Georgia,serif",marginTop:4}}>{myDname||state.user.userId}</div><div style={{fontSize:12,color:C.muted}}>@{state.user.userId}</div></div><div style={{fontSize:36}}>👤</div></div>
+        {editName?(<div><input style={{...inp,marginBottom:8}} value={newDname} onChange={e=>{setNewDname(e.target.value);setNameErr("")}}/>{nameErr&&<div style={{color:C.tomato,fontSize:12,fontWeight:700,marginBottom:8}}>{nameErr}</div>}<div style={{display:"flex",gap:8}}><Btn onClick={()=>setEditName(false)}>Cancel</Btn><Btn primary onClick={doRename}>Save</Btn></div></div>):(<Btn onClick={()=>{setEditName(true);setNewDname(myDname||"")}}>✏️ Change Display Name</Btn>)}
+        <div style={{marginTop:12}}><span onClick={()=>{if(window.confirm("Log out?"))dispatch({type:"LOGOUT"})}} style={{color:"#c0392b",fontSize:13,cursor:"pointer",fontWeight:700}}>Log out</span></div>
+      </div>)}
+      {state.user?.guest&&(<div style={{...S.limeCard,padding:20,marginBottom:20,textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>👤</div><div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Playing as Guest</div><p style={{color:C.muted,fontSize:12,marginBottom:12}}>Create an account to edit your display name, claim games, and sync across devices.</p><Btn primary onClick={()=>dispatch({type:"LOGOUT"})}>Create Account</Btn></div>)}
+      {state.user&&!state.user.guest&&state.user.families?.length>0&&(<div style={{marginBottom:20}}>
+        <h3 style={{...secHead,color:C.card}}>Your Families</h3>
+        {state.user.families.map(f=>(<div key={f} style={{...S.card,padding:"12px 16px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between",background:f===state.family?C.lime:C.card}}><div onClick={()=>{if(f!==state.family&&!state.current)dispatch({type:"SWITCH_FAMILY",family:f})}} style={{cursor:f!==state.family&&!state.current?"pointer":"default",flex:1}}><span style={{fontWeight:700}}>{f}</span>{f===state.family&&<span style={{fontSize:11,color:C.muted,marginLeft:8}}>· active</span>}</div><span onClick={()=>{if(window.confirm(`Leave "${f}"?`))dispatch({type:"LEAVE_FAMILY",family:f})}} style={{color:"#c0392b",fontSize:12,cursor:"pointer",fontWeight:700}}>Leave</span></div>))}
+        {state.current&&<p style={{color:C.card,fontSize:11,marginTop:4}}>Finish your current game before switching families.</p>}
+      </div>)}
       <div style={{marginBottom:20}}>
         <h3 style={{...secHead,color:C.card}}>Join / Create Family Space</h3>
         {!sb&&<div style={{...S.limeCard,padding:14,marginBottom:12,fontSize:13,color:C.muted}}>⚠️ Supabase not configured.</div>}
@@ -890,43 +603,19 @@ function FamilyScreen({state,dispatch}){
         <Btn full primary onClick={joinFamily} disabled={loading||!pw.trim()||!sb}>{loading?"Connecting…":"Join / Create →"}</Btn>
         {msg&&<div style={{...S.card,marginTop:12,padding:14,fontSize:13,color:C.muted}}>{msg}</div>}
       </div>
-
-      {/* Claim Players */}
-      {state.family&&!state.user?.guest&&claimable.length>0&&(
-        <div style={{marginBottom:20}}>
-          <h3 style={{...secHead,color:C.card}}>Unclaimed Players</h3>
-          <p style={{color:C.card,fontSize:12,marginBottom:12}}>Tap a name to link their games to your account.</p>
-          {claimable.map(c=>(
-            <div key={c.name} onClick={()=>startClaim(c)} style={{...S.card,padding:"12px 16px",marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700}}>{c.name}</span>
-              <span style={{fontSize:12,color:C.muted}}>{c.games.length} game{c.games.length!==1?"s":""}</span>
-            </div>
-          ))}
+      {state.family&&!state.user?.guest&&claimable.length>0&&(<div style={{marginBottom:20}}>
+        <h3 style={{...secHead,color:C.card}}>Unclaimed Players</h3>
+        <p style={{color:C.card,fontSize:12,marginBottom:12}}>Tap a name to link their games to your account.</p>
+        {claimable.map(c=>(<div key={c.name} onClick={()=>startClaim(c)} style={{...S.card,padding:"12px 16px",marginBottom:8,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontWeight:700}}>{c.name}</span><span style={{fontSize:12,color:C.muted}}>{c.games.length} game{c.games.length!==1?"s":""}</span></div>))}
+      </div>)}
+      {claimTarget&&(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}} onClick={()=>setClaimTarget(null)}>
+        <div style={{...S.card,padding:24,maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}>
+          <h3 style={{fontFamily:"Georgia,serif",marginBottom:4,fontSize:18}}>Claim "{claimTarget.name}"?</h3>
+          <p style={{color:C.muted,fontSize:12,marginBottom:16}}>Select the games you played. They'll be linked to your account as "{myDname||state.user?.userId}".</p>
+          {claimTarget.games.map(g=>{const w=getWinner(g.players,g);return(<div key={g.id} onClick={()=>setClaimSel(p=>({...p,[g.id]:!p[g.id]}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${C.ink}20`,cursor:"pointer"}}><div style={{width:24,height:24,borderRadius:6,border:`2px solid ${C.ink}`,background:claimSel[g.id]?C.tomato:C.white,display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontSize:14,fontWeight:700,flexShrink:0}}>{claimSel[g.id]?"✓":""}</div><div style={{flex:1}}><div style={{fontSize:13,fontWeight:700}}>{g.emoji} {g.gameName}</div><div style={{fontSize:11,color:C.muted}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()} · {g.players.map(p=>p.name).join(", ")}</div></div></div>)})}
+          <div style={{display:"flex",gap:10,marginTop:20}}><Btn full onClick={()=>setClaimTarget(null)}>Cancel</Btn><Btn full primary onClick={doClaim} disabled={!Object.values(claimSel).some(v=>v)}>Claim Selected</Btn></div>
         </div>
-      )}
-
-      {/* Claim Modal */}
-      {claimTarget&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:20}} onClick={()=>setClaimTarget(null)}>
-          <div style={{...S.card,padding:24,maxWidth:380,width:"100%",maxHeight:"80vh",overflow:"auto"}} onClick={e=>e.stopPropagation()}>
-            <h3 style={{fontFamily:"Georgia,serif",marginBottom:4,fontSize:18}}>Claim "{claimTarget.name}"?</h3>
-            <p style={{color:C.muted,fontSize:12,marginBottom:16}}>Select the games you played. They'll be linked to your account as "{myDname||state.user?.userId}".</p>
-            {claimTarget.games.map(g=>{const w=[...g.players].sort((a,b)=>calcTotal(b)-calcTotal(a))[0];return(
-              <div key={g.id} onClick={()=>setClaimSel(p=>({...p,[g.id]:!p[g.id]}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${C.ink}20`,cursor:"pointer"}}>
-                <div style={{width:24,height:24,borderRadius:6,border:`2px solid ${C.ink}`,background:claimSel[g.id]?C.tomato:C.white,display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontSize:14,fontWeight:700,flexShrink:0}}>{claimSel[g.id]?"✓":""}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700}}>{g.emoji} {g.gameName}</div>
-                  <div style={{fontSize:11,color:C.muted}}>{new Date(g.finishedAt||g.startedAt).toLocaleDateString()} · {g.players.map(p=>p.name).join(", ")}</div>
-                </div>
-              </div>
-            )})}
-            <div style={{display:"flex",gap:10,marginTop:20}}>
-              <Btn full onClick={()=>setClaimTarget(null)}>Cancel</Btn>
-              <Btn full primary onClick={doClaim} disabled={!Object.values(claimSel).some(v=>v)}>Claim Selected</Btn>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>)}
     </div>
   );
 }
