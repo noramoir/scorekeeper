@@ -143,6 +143,10 @@ function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms,user,fu,lw){
   const maxScore=isInd?(ms||def.maxScore||50):null;
   const lowWins=!!(lw||def.lowWins);
   const gn=gk==="custom"?(cn||"Custom Game"):def.name;
+  const TIER_OVERRIDES = {
+  "Wingspan": 4,
+};
+const tier = TIER_OVERRIDES[gn] || def.tier || 3
   const myName=user&&fu&&fu[user.userId]?fu[user.userId].displayName:(user?.displayName||null);
 
   let players;
@@ -152,7 +156,7 @@ function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms,user,fu,lw){
   } else {
     players=pn.map(n=>({name:n,scores:Object.fromEntries(categories.map(c=>[c,""])),userId:user&&n===myName?user.userId:undefined}));
   }
-  return{id:Date.now(),gameKey:gk,gameName:gn,emoji,categories,players,teamMode:!!tm,teams:tm?teams:null,startedAt:new Date().toISOString(),finished:false,scoringType:isInd?"independent":"standard",maxScore,lowWins};
+  return{id:Date.now(),gameKey:gk,gameName:gn,emoji,categories,players,teamMode:!!tm,teams:tm?teams:null,startedAt:new Date().toISOString(),finished:false,scoringType:isInd?"independent":"standard",maxScore,lowWins,tier};
 }
 
 /* ═══ Reducer ═══ */
@@ -170,10 +174,10 @@ function reducer(state,action){
     case "SET_FAMILY_USERS":return{...state,familyUsers:action.familyUsers};
     case "CLAIM_GAMES":{const h=state.history.map(g=>{if(!action.gameIds.includes(g.id))return g;return{...g,players:g.players.map(p=>p.name===action.oldName?{...p,userId:action.userId,name:action.newName}:p)}});return{...state,history:h}}
     case "RENAME_USER":{const u={...state.user,displayName:action.newName};const fu={...state.familyUsers,[action.userId]:{...state.familyUsers[action.userId],displayName:action.newName}};const h=state.history.map(g=>({...g,players:g.players.map(p=>p.userId===action.userId?{...p,name:action.newName}:p)}));return{...state,user:u,familyUsers:fu,history:h}}
-    case "START_GAME":{const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams,action.scoringType,action.maxScore,state.user,state.familyUsers,action.lowWins);const templates={...state.templates};const tKey=action.gameKey==="custom"?(action.customName||"Custom Game"):action.gameKey;if(!templates[tKey])templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories,scoringType:g.scoringType,maxScore:g.maxScore,lowWins:g.lowWins};return{...state,screen:"game",current:g,templates}}
+    case "START_GAME":{const g=newGame(action.gameKey,action.players,action.cats,action.customName,action.customEmoji,action.teamMode,action.teams,action.scoringType,action.maxScore,state.user,state.familyUsers,action.lowWins);const templates={...state.templates};const tKey=action.gameKey==="custom"?(action.customName||"Custom Game"):action.gameKey;if(!templates[tKey])templates[tKey]={gameKey:action.gameKey,name:g.gameName,gameName:g.gameName,emoji:g.emoji,categories:g.categories,scoringType:g.scoringType,maxScore:g.maxScore,lowWins:g.lowWins,tier:g.tier};return{...state,screen:"game",current:g,templates}}
     case "SET_SCORE":{const c={...state.current};c.players=c.players.map((p,pi)=>pi===action.pi?{...p,scores:{...p.scores,[action.cat]:action.val}}:p);return{...state,current:c}}
     case "ADD_CATEGORY":{const c={...state.current};c.categories=[...c.categories,action.cat];c.players=c.players.map(p=>({...p,scores:{...p.scores,[action.cat]:""}}));return{...state,current:c}}
-    case "FINISH":{const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;const templates={...state.templates};if(!templates[tKey])templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories,scoringType:fin.scoringType,maxScore:fin.maxScore,lowWins:fin.lowWins};return{...state,screen:"home",current:null,history:[fin,...state.history],templates}}
+    case "FINISH":{const fin={...state.current,finished:true,finishedAt:new Date().toISOString()};const tKey=fin.gameKey==="custom"?fin.gameName:fin.gameKey;const templates={...state.templates};if(!templates[tKey])templates[tKey]={gameKey:fin.gameKey,name:fin.gameName,gameName:fin.gameName,emoji:fin.emoji,categories:fin.categories,scoringType:fin.scoringType,maxScore:fin.maxScore,lowWins:fin.lowWins,tier:fin.tier};return{...state,screen:"home",current:null,history:[fin,...state.history],templates}}
     case "DELETE_HISTORY":{const u=state.history.filter(g=>g.id!==action.id);if(state.family&&sb)dbSave(state.family,u).catch(()=>{});return{...state,history:u,screen:"history",detailId:null}}
     case "DELETE_TEMPLATE":{const t={...state.templates};delete t[action.key];return{...state,templates:t}}
     case "SYNC_HISTORY":return{...state,history:action.history};
