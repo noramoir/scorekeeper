@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#8C9EFF"/>
-  <title>🎲 Score Keeper</title>
+  <title>🎲 Tally</title>
   <script>var SUPABASE_URL="https://lijgbsxjatfzewogznwg.supabase.co";var SUPABASE_ANON="sb_publishable_Rll9McjZsM2fPYoYdXnMAA_j0Y37bHO";</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -22,7 +22,7 @@
 const{useState,useEffect,useReducer,useCallback,useRef}=React;
 
 /* ═══ Supabase ═══ */
-let sb=null;try{if(SUPABASE_URL!=="https://lijgbsxjatfzewogznwg.supabase.co")sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON)}catch(e){}
+let sb=null;try{if(SUPABASE_URL!=="YOUR_SUPABASE_URL_HERE")sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON)}catch(e){}
 async function dbLoad(c){if(!sb)return null;try{const{data}=await sb.from("family_games").select("games").eq("family_code",c).single();return data?.games||null}catch{return null}}
 async function dbSave(c,g){if(!sb)return;try{await sb.from("family_games").upsert({family_code:c,games:g,updated_at:new Date().toISOString()},{onConflict:"family_code"})}catch{}}
 async function dbLoadUser(u){return dbLoad("user_"+u)}
@@ -104,9 +104,10 @@ function buildLeaderboard(history,fu={}){
           const k=uid||memberName;const dn=uid&&fu[uid]?fu[uid].displayName:memberName;
           if(!players[k])players[k]={name:dn,key:k,wins:0,games:0,totalScore:0};
           players[k].name=dn;
-          players[k].games+=1;
-          players[k].totalScore+=Math.round(team.total/sz);
-          if(isWin)players[k].wins+=1/sz;
+          const tier=game.tier||3;
+          players[k].games+=tier;
+          players[k].totalScore+=Math.round(team.total/sz)*tier;
+          if(isWin)players[k].wins+=tier/sz;
         });
       });
     } else {
@@ -117,8 +118,9 @@ function buildLeaderboard(history,fu={}){
       game.players.forEach(p=>{
         const k=pkey(p);const dn=rname(p,fu);
         if(!players[k])players[k]={name:dn,key:k,wins:0,games:0,totalScore:0};
-        players[k].name=dn;players[k].games+=1;players[k].totalScore+=calcTotal(p);
-        if(calcTotal(p)===winT)players[k].wins+=1;
+        const tier=game.tier||3;
+        players[k].games+=tier;players[k].totalScore+=calcTotal(p)*tier;
+        if(calcTotal(p)===winT)players[k].wins+=tier;
       });
     }
   });
@@ -146,7 +148,7 @@ function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms,user,fu,lw){
   const TIER_OVERRIDES = {
   "Wingspan": 4,
 };
-const tier = TIER_OVERRIDES[gn] || def.tier || 3
+const tier = TIER_OVERRIDES[gn] || def.tier || 3;
   const myName=user&&fu&&fu[user.userId]?fu[user.userId].displayName:(user?.displayName||null);
 
   let players;
@@ -221,7 +223,7 @@ function WelcomeScreen({state,dispatch}){
   async function create(){if(!uid.trim()||!pin.trim()){setErr("Username and PIN required");return}if(pin.trim().length<4){setErr("PIN must be 4+ chars");return}setLoading(true);setErr("");const id=uid.trim().toLowerCase().replace(/\s+/g,"");if(sb){const ex=await dbLoadUser(id);if(ex){setErr("Username taken");setLoading(false);return}}const user={userId:id,displayName:id,pin:pin.trim(),families:[],createdAt:new Date().toISOString()};if(sb)await dbSaveUser(id,{pin:user.pin,displayName:id,families:[],createdAt:user.createdAt});dispatch({type:"SET_USER",user});setLoading(false)}
   async function login(){if(!uid.trim()||!pin.trim()){setErr("Both required");return}setLoading(true);setErr("");const id=uid.trim().toLowerCase().replace(/\s+/g,"");if(!sb){setErr("Supabase required");setLoading(false);return}const data=await dbLoadUser(id);if(!data){setErr("Not found");setLoading(false);return}if(data.pin!==pin.trim()){setErr("Wrong PIN");setLoading(false);return}const user={userId:id,displayName:data.displayName||id,pin:data.pin,families:data.families||[],createdAt:data.createdAt};dispatch({type:"SET_USER",user});if(user.families.length>0)dispatch({type:"JOIN_FAMILY",family:user.families[0]});setLoading(false)}
   return(<div style={{padding:"40px 24px",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center"}}>
-    <div style={{textAlign:"center",marginBottom:40}}><div style={{fontSize:56,marginBottom:8}}>🎲</div><h1 style={{fontSize:32,fontFamily:"Georgia,serif",fontWeight:900}}>Score Keeper</h1><p style={{color:C.white,fontSize:14,marginTop:8}}>Track scores, settle debates.</p></div>
+    <div style={{textAlign:"center",marginBottom:40}}><div style={{fontSize:56,marginBottom:8}}>🎲</div><h1 style={{fontSize:32,fontFamily:"Georgia,serif",fontWeight:900}}>Tally</h1><p style={{color:C.white,fontSize:14,marginTop:8}}>Track scores, settle debates.</p></div>
     {!mode?<div style={{display:"flex",flexDirection:"column",gap:12}}><Btn full primary onClick={()=>setMode("create")}>Create Account</Btn><Btn full onClick={()=>setMode("login")}>I have an account</Btn><div onClick={()=>dispatch({type:"GUEST"})} style={{textAlign:"center",color:C.white,fontSize:13,cursor:"pointer",marginTop:8,textDecoration:"underline"}}>Skip — play as guest</div></div>
     :mode==="create"?<div style={{...S.card,padding:20}}><h3 style={{fontFamily:"Georgia,serif",marginBottom:16,fontSize:18}}>Create Account</h3><div style={{marginBottom:12}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>USERNAME</div><input style={inp} placeholder="e.g. sarah123" value={uid} onChange={e=>setUid(e.target.value)}/></div><div style={{marginBottom:16}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>PIN (4+ chars)</div><input style={inp} type="password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value)}/></div>{err&&<div style={{color:C.tomato,fontSize:13,fontWeight:700,marginBottom:12}}>{err}</div>}<Btn full primary disabled={loading} onClick={create}>{loading?"Creating…":"Create →"}</Btn><div style={{textAlign:"center",marginTop:12}}><span onClick={()=>{setMode(null);setErr("")}} style={{color:C.muted,fontSize:13,cursor:"pointer"}}>← Back</span></div></div>
     :<div style={{...S.card,padding:20}}><h3 style={{fontFamily:"Georgia,serif",marginBottom:16,fontSize:18}}>Log In</h3><div style={{marginBottom:12}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>USERNAME</div><input style={inp} placeholder="e.g. sarah123" value={uid} onChange={e=>setUid(e.target.value)}/></div><div style={{marginBottom:16}}><div style={{fontSize:11,color:C.muted,marginBottom:4}}>PIN</div><input style={inp} type="password" placeholder="••••" value={pin} onChange={e=>setPin(e.target.value)}/></div>{err&&<div style={{color:C.tomato,fontSize:13,fontWeight:700,marginBottom:12}}>{err}</div>}<Btn full primary disabled={loading} onClick={login}>{loading?"Logging in…":"Log In →"}</Btn><div style={{textAlign:"center",marginTop:12}}><span onClick={()=>{setMode(null);setErr("")}} style={{color:C.muted,fontSize:13,cursor:"pointer"}}>← Back</span></div></div>}
@@ -262,7 +264,7 @@ function HomeScreen({state,dispatch}){
   const top=[...lb].sort((a,b)=>(b.winRate*0.6+(b.games/maxG)*0.4)-(a.winRate*0.6+(a.games/maxG)*0.4))[0];
   const myName=state.user&&fu[state.user.userId]?fu[state.user.userId].displayName:(state.user?.displayName||null);
   return(<div style={{padding:"20px 20px 80px"}}>
-    <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,letterSpacing:-1}}>🎲 Score Keeper</h1>
+    <h1 style={{textAlign:"center",fontSize:34,margin:"24px 0 4px",fontFamily:"Georgia,serif",fontWeight:900,letterSpacing:-1}}>🎲 Tally</h1>
     {myName&&<p style={{textAlign:"center",color:C.white,fontSize:13,marginBottom:4}}>Hey, <b>{myName}</b>!</p>}
     {state.user?.guest&&<p style={{textAlign:"center",color:C.white,fontSize:12,marginBottom:4,opacity:0.7}}>Playing as guest</p>}
     {state.family&&<p style={{textAlign:"center",color:C.muted,fontSize:12,marginBottom:8}}>👨‍👩‍👧 <b style={{color:C.card}}>{state.family}</b></p>}
