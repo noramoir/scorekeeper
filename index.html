@@ -476,6 +476,7 @@ function HistoryDetail({state,dispatch}){
   const fu=state.familyUsers||{};const game=state.history.find(g=>g.id===state.detailId);
   if(!game)return<div style={{padding:"20px 20px 80px"}}><TopBar title="Game Detail" onBack={()=>dispatch({type:"GO",screen:"history"})}/><p style={{color:C.muted,textAlign:"center",marginTop:60}}>Game not found.</p></div>;
   const isInd=game.scoringType==="independent";const isTeam=game.teamMode&&game.teams;
+  const canDelete=!state.user?.guest&&game.players.some(p=>p.userId&&p.userId===state.user?.userId);
   const sortFn=game.lowWins?(a,b)=>a.t-b.t:(a,b)=>b.t-a.t;
   const rows=game.players.map(p=>({name:isTeam?(game.teams.find(t=>t.name===p.name)?.members.join(", ")||p.name):rname(p,fu),label:p.name,t:calcTotal(p)})).sort(sortFn);
   return(<div style={{padding:"20px 20px 80px"}}>
@@ -487,7 +488,7 @@ function HistoryDetail({state,dispatch}){
       <tbody>{game.categories.map((cat,ci)=><tr key={cat} style={{background:ci%2===0?C.white:C.card}}><td style={{padding:"8px 12px",fontWeight:700}}>{cat}</td>{game.players.map(p=><td key={p.name} style={{textAlign:"center",padding:"8px 4px",fontWeight:700}}>{p.scores[cat]||0}</td>)}</tr>)}
       <tr style={{background:C.tomato}}><td style={{padding:"10px 12px",fontWeight:900,color:C.white,fontFamily:"Georgia,serif"}}>TOTAL</td>{game.players.map(p=><td key={p.name} style={{textAlign:"center",fontWeight:900,color:C.white,fontSize:18,fontFamily:"Georgia,serif"}}>{calcTotal(p)}</td>)}</tr></tbody>
     </table></div></div>}
-    <Btn full onClick={()=>{if(window.confirm("Delete this game?"))dispatch({type:"DELETE_HISTORY",id:game.id})}} style={{background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>
+    {canDelete&&<Btn full onClick={()=>{if(window.confirm("Delete this game?"))dispatch({type:"DELETE_HISTORY",id:game.id})}} style={{background:"#fde8e8",color:"#c0392b",borderColor:"#c0392b"}}>🗑 Delete Game</Btn>}
   </div>);
 }
 
