@@ -102,12 +102,12 @@ function buildLeaderboard(history,fu={}){
             if(g2.teams){for(const t2 of g2.teams){if(t2.members.includes(memberName)){const f2=g2.players.find(p=>p.name===memberName&&p.userId);if(f2){uid=f2.userId;break}}}}
           }
           const k=uid||memberName;const dn=uid&&fu[uid]?fu[uid].displayName:memberName;
-          if(!players[k])players[k]={name:dn,key:k,wins:0,games:0,totalScore:0};
+          if(!players[k])players[k]={name:dn,key:k,wins:0,games:0,totalScore:0,wWins:0,wGames:0};
           players[k].name=dn;
           const tier=game.tier||3;
-          players[k].games+=tier;
+          players[k].games+=1;players[k].wGames+=tier;
           players[k].totalScore+=Math.round(team.total/sz)*tier;
-          if(isWin)players[k].wins+=tier/sz;
+          if(isWin){players[k].wins+=1/sz;players[k].wWins+=tier/sz;}
         });
       });
     } else {
@@ -119,8 +119,8 @@ function buildLeaderboard(history,fu={}){
         const k=pkey(p);const dn=rname(p,fu);
         if(!players[k])players[k]={name:dn,key:k,wins:0,games:0,totalScore:0};
         const tier=game.tier||3;
-        players[k].games+=tier;players[k].totalScore+=calcTotal(p)*tier;
-        if(calcTotal(p)===winT)players[k].wins+=tier;
+        players[k].games+=1;players[k].wGames+=tier;players[k].totalScore+=calcTotal(p)*tier;
+        if(calcTotal(p)===winT){players[k].wins+=1;players[k].wWins+=tier;}
       });
     }
   });
@@ -134,8 +134,7 @@ function buildIndependentRankings(history,gameKey,fu={}){
   const players={};
   history.forEach(g=>{if(!g.finished||g.scoringType!=="independent")return;const k=g.gameKey==="custom"?gameName(g):g.gameKey;if(k!==gameKey)return;g.players.forEach(p=>{const sc=parseFloat(p.scores?.Score)||0;const pk=pkey(p);const dn=rname(p,fu);if(!players[pk])players[pk]={name:dn,total:0,count:0,lastPlayed:null};players[pk].name=dn;players[pk].total+=sc;players[pk].count+=1;const d=g.finishedAt||g.startedAt;if(!players[pk].lastPlayed||d>players[pk].lastPlayed)players[pk].lastPlayed=d})});
   const ms=history.find(g=>{const k=g.gameKey==="custom"?gameName(g):g.gameKey;return k===gameKey&&g.scoringType==="independent"})?.maxScore||50;
-  return Object.values(players).map(p=>({...p,avg:p.count>0?p.total/p.count:0,effective:p.count>0?(p.total/p.count)*Math.min(1,p.count/10):0,maxScore:ms})).sort((a,b)=>b.effective-a.effective);
-}
+  return Object.values(players).map(p=>({...p,wins:Math.round(p.wins*100)/100,winRate:p.wGames>0?p.wWins/p.wGames:0,avgScore:p.games>0?Math.round(p.totalScore/p.games):0}));}
 
 function newGame(gk,pn,cats,cn,ce,tm,teams,st,ms,user,fu,lw){
   const def=BUILT_IN_GAMES[gk]||{name:cn,emoji:ce||"🎲",categories:cats,scoringType:st};
